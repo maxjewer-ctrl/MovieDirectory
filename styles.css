@@ -1422,11 +1422,11 @@ select:focus-visible,
 
 @keyframes detail-case-rotate {
   from {
-    transform: rotateX(var(--case-tilt)) rotateY(var(--case-spin-start));
+    transform: rotateY(var(--case-tilt)) rotateX(var(--case-spin-start));
   }
 
   to {
-    transform: rotateX(var(--case-tilt)) rotateY(calc(var(--case-spin-start) + 360deg));
+    transform: rotateY(var(--case-tilt)) rotateX(calc(var(--case-spin-start) + 360deg));
   }
 }
 

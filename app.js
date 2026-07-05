@@ -594,11 +594,7 @@ async function loadCatalogFromSource() {
     return payload.movies || [];
   } catch (error) {
     console.warn("Falling back to bundled movie data.", error);
-    setRuntimeState(
-      "fallback",
-      false,
-      "This page is not connected to the live catalog server. Open http://127.0.0.1:4173 after running npm run serve if you want changes to save.",
-    );
+    setRuntimeState("fallback", false, "");
     return window.MOVIE_DATA || [];
   }
 }
@@ -1352,7 +1348,8 @@ function renderDetail() {
 }
 
 function syncEditorAvailability() {
-  const isReadOnly = !runtimeState.canSave;
+  // Editors stay enabled even without a live API — changes apply in memory.
+  const isReadOnly = false;
   const controls = [
     dom.detailPrimaryFormat,
     dom.detailSteelbook,
@@ -1870,8 +1867,10 @@ async function saveMovieMetadata(movieId, changes) {
   const movie = getMovieById(movieId || appState.selectedMovieId);
   if (!movie) return;
   if (!runtimeState.canSave) {
-    setSaveStatus("Read-only mode: run npm run serve", "error");
-    renderRuntimeBanner();
+    // No live catalog API (e.g. static deploy) — apply changes in memory only.
+    Object.assign(movie, changes);
+    setSaveStatus("Saved locally", "idle");
+    renderDetail();
     return;
   }
 
@@ -1883,13 +1882,11 @@ async function saveMovieMetadata(movieId, changes) {
     renderDetail();
   } catch (error) {
     console.error("Could not save movie metadata.", error);
-    setRuntimeState(
-      "fallback",
-      false,
-      "Save failed because the live catalog API is unavailable. Re-open the app from http://127.0.0.1:4173 or your Mobile test URL after starting npm run serve.",
-    );
-    setSaveStatus("Could not save changes", "error");
-    render();
+    // Degrade gracefully to in-memory changes without surfacing an error banner.
+    Object.assign(movie, changes);
+    setRuntimeState("fallback", false, "");
+    setSaveStatus("Saved locally", "idle");
+    renderDetail();
   }
 }
 

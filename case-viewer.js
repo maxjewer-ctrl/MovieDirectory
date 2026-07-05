@@ -28,8 +28,8 @@ let running = false;
 let dragging = false;
 let pointerId = null;
 let lastX = 0, lastY = 0;
-let velY = AUTO_SPEED;  // yaw velocity (carries fling momentum)
-let velX = 0;           // pitch velocity
+let velY = 0;           // yaw velocity (clamped tilt axis)
+let velX = AUTO_SPEED;  // pitch velocity — carries the vertical spin momentum
 
 const textureCache = new Map();
 
@@ -271,12 +271,14 @@ function onPointerMove(e) {
   lastX = e.clientX;
   lastY = e.clientY;
 
-  model.rotation.y += dx * DRAG_SENS;
-  model.rotation.x = clamp(model.rotation.x - dy * TILT_SENS, -MAX_TILT, MAX_TILT);
+  // Vertical drag drives the free (unclamped) spin; horizontal drag is a
+  // gentle clamped yaw.
+  model.rotation.x += -dy * DRAG_SENS;
+  model.rotation.y = clamp(model.rotation.y + dx * TILT_SENS, -MAX_TILT, MAX_TILT);
 
   // Remember the last movement as the fling velocity for release.
-  velY = dx * DRAG_SENS;
-  velX = -dy * TILT_SENS;
+  velX = -dy * DRAG_SENS;
+  velY = dx * TILT_SENS;
 }
 
 function endDrag(e) {
@@ -377,30 +379,30 @@ function tick() {
     if (dragging) {
       // Direct manipulation handled in onPointerMove; nothing to integrate.
     } else if (returningToFront) {
-      // Swing the cover back to face front and level out the tilt.
+      // Swing the cover back to face front (vertical axis) and level the yaw.
       const twoPi = Math.PI * 2;
-      const cur = ((model.rotation.y % twoPi) + twoPi) % twoPi;
+      const cur = ((model.rotation.x % twoPi) + twoPi) % twoPi;
       const target = cur > Math.PI ? twoPi : 0;
-      const goal = model.rotation.y - (model.rotation.y % twoPi) + target;
+      const goal = model.rotation.x - (model.rotation.x % twoPi) + target;
       const ease = Math.min(1, f * 0.1);
-      model.rotation.y += (goal - model.rotation.y) * ease;
-      model.rotation.x += (0 - model.rotation.x) * ease;
-      if (Math.abs(goal - model.rotation.y) < 0.01 && Math.abs(model.rotation.x) < 0.01) {
-        model.rotation.y = 0;
+      model.rotation.x += (goal - model.rotation.x) * ease;
+      model.rotation.y += (0 - model.rotation.y) * ease;
+      if (Math.abs(goal - model.rotation.x) < 0.01 && Math.abs(model.rotation.y) < 0.01) {
         model.rotation.x = 0;
+        model.rotation.y = 0;
         returningToFront = false;
-        velY = AUTO_SPEED;
+        velX = AUTO_SPEED;
       }
     } else {
-      // Free spin with fling momentum that settles into the gentle auto-rotate.
-      model.rotation.y += velY * f;
+      // Free vertical spin with fling momentum that settles into auto-rotate.
       model.rotation.x += velX * f;
-      // Yaw velocity decays toward the idle baseline (a fling coasts, then
-      // eases into the slow auto-rotate rather than stopping dead).
-      velY = AUTO_SPEED + (velY - AUTO_SPEED) * Math.pow(SPIN_DAMPING, f);
-      // Pitch bleeds off and the case self-levels.
-      velX *= Math.pow(SPIN_DAMPING, f);
-      model.rotation.x += (0 - model.rotation.x) * Math.min(1, TILT_RECENTER * f);
+      model.rotation.y += velY * f;
+      // Pitch velocity decays toward the idle baseline (a fling coasts, then
+      // eases into the slow vertical auto-rotate rather than stopping dead).
+      velX = AUTO_SPEED + (velX - AUTO_SPEED) * Math.pow(SPIN_DAMPING, f);
+      // Yaw bleeds off and the case self-levels.
+      velY *= Math.pow(SPIN_DAMPING, f);
+      model.rotation.y += (0 - model.rotation.y) * Math.min(1, TILT_RECENTER * f);
     }
   }
 
