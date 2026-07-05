@@ -271,13 +271,14 @@ function onPointerMove(e) {
   lastX = e.clientX;
   lastY = e.clientY;
 
-  // Inverted manual controls: drag direction rotates the case the opposite way.
+  // Yaw (rotation around the vertical axis) stays inverted; pitch (the
+  // horizontal tilt axis) uses the normal direction.
   model.rotation.y += -dx * DRAG_SENS;
-  model.rotation.x = clamp(model.rotation.x + dy * TILT_SENS, -MAX_TILT, MAX_TILT);
+  model.rotation.x = clamp(model.rotation.x - dy * TILT_SENS, -MAX_TILT, MAX_TILT);
 
   // Remember the last movement as the fling velocity for release.
   velY = -dx * DRAG_SENS;
-  velX = dy * TILT_SENS;
+  velX = -dy * TILT_SENS;
 }
 
 function endDrag(e) {

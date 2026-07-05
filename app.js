@@ -124,6 +124,8 @@ const dom = {
   rowTemplate: document.querySelector("#movie-row-template"),
   sidebarToggle: document.querySelector("#sidebar-toggle"),
   sidebar: document.querySelector("#sidebar"),
+  sidebarBackdrop: document.querySelector("#sidebar-backdrop"),
+  sidebarClose: document.querySelector("#sidebar-close"),
   detailPanel: document.querySelector(".detail-panel"),
   themeSelectM: document.querySelector("#theme-select-m"),
   sortSelectM: document.querySelector("#sort-select-m"),
@@ -1845,6 +1847,20 @@ function focusDetailPanel() {
   document.querySelector(".detail-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
+function openSidebar() {
+  dom.sidebar?.classList.add("sidebar-open");
+  dom.sidebarBackdrop?.classList.add("is-visible");
+  dom.sidebarToggle?.classList.add("is-open");
+  dom.sidebarToggle?.setAttribute("aria-expanded", "true");
+}
+
+function closeSidebar() {
+  dom.sidebar?.classList.remove("sidebar-open");
+  dom.sidebarBackdrop?.classList.remove("is-visible");
+  dom.sidebarToggle?.classList.remove("is-open");
+  dom.sidebarToggle?.setAttribute("aria-expanded", "false");
+}
+
 async function patchMovie(movieId, changes) {
   const response = await fetch(`./api/catalog/${encodeURIComponent(movieId)}`, {
     method: "PATCH",
@@ -2199,9 +2215,21 @@ function escapeAttr(text) {
 function bindEvents() {
   if (dom.sidebarToggle) {
     dom.sidebarToggle.addEventListener("click", () => {
-      const isOpen = dom.sidebar.classList.toggle("sidebar-open");
-      dom.sidebarToggle.classList.toggle("is-open", isOpen);
-      dom.sidebarToggle.setAttribute("aria-expanded", String(isOpen));
+      dom.sidebar.classList.contains("sidebar-open") ? closeSidebar() : openSidebar();
+    });
+  }
+  if (dom.sidebarBackdrop) {
+    dom.sidebarBackdrop.addEventListener("click", closeSidebar);
+  }
+  if (dom.sidebarClose) {
+    dom.sidebarClose.addEventListener("click", closeSidebar);
+  }
+  // Close the drawer after picking a filter on mobile
+  if (dom.sidebar) {
+    dom.sidebar.addEventListener("click", (event) => {
+      if (event.target.closest(".nav-button") && window.innerWidth <= 1100) {
+        closeSidebar();
+      }
     });
   }
 
@@ -2304,6 +2332,7 @@ function bindEvents() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       closeViewsMenu();
+      closeSidebar();
       document.querySelectorAll(".modal:not([hidden])").forEach((modal) => {
         modal.hidden = true;
       });

@@ -1682,6 +1682,23 @@ select:focus-visible,
   display: none;
 }
 
+/* Sidebar drawer backdrop + close button — hidden on desktop */
+.sidebar-backdrop {
+  display: none;
+}
+
+.sidebar-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 1.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 @media (max-width: 1100px) {
   .app-shell {
     display: flex;
@@ -1702,29 +1719,49 @@ select:focus-visible,
     order: 1;
   }
 
+  /* Sidebar becomes a slide-in drawer from the left */
   .sidebar {
-    order: 2;
-    position: static;
-    /* Collapsed by default */
-    max-height: 0;
-    overflow: hidden;
-    padding-top: 0;
-    padding-bottom: 0;
-    opacity: 0;
-    pointer-events: none;
-    transition: max-height 340ms ease, opacity 240ms ease, padding 340ms ease;
-  }
-
-  .sidebar.sidebar-open {
-    max-height: 2400px;
-    padding-top: 28px;
-    padding-bottom: 26px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(86vw, 340px);
+    max-height: none;
+    z-index: 120;
+    transform: translateX(-102%);
+    transition: transform 300ms ease;
+    overflow-y: auto;
+    border-radius: 0 22px 22px 0;
+    padding: 20px 18px;
     opacity: 1;
     pointer-events: auto;
   }
 
-  .detail-panel {
-    order: 3;
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.55);
+  }
+
+  /* Backdrop behind the open drawer */
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 300ms ease;
+  }
+
+  .sidebar-backdrop.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Close button visible only in the mobile drawer */
+  .sidebar-close {
+    display: inline-flex;
   }
 
   /* Show the mobile filter toggle in the topbar */
