@@ -1,0 +1,492 @@
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+const GLB_PATH = "./dvd_bd_game_case_with_sample_labels.glb";
+const DEFAULT_W = 280;
+const DEFAULT_H = 389;
+
+// Motion tuning (all rotation deltas are expressed per-frame at 60fps and
+// scaled by delta-time so behaviour is frame-rate independent).
+const AUTO_SPEED = 0.008;   // idle spin, radians/frame @60fps
+const DRAG_SENS = 0.01;     // radians of yaw per pixel dragged
+const TILT_SENS = 0.006;    // radians of pitch per pixel dragged
+const MAX_TILT = 0.5;       // clamp on the pitch axis
+const SPIN_DAMPING = 0.94;  // fling decay toward the auto baseline
+const TILT_RECENTER = 0.06; // how fast pitch eases back to level
+
+let renderer, scene, camera, model, animFrameId;
+let viewerDiv = null;
+let canvasEl = null;
+let currentMovie = null;
+let pendingMovie = null;
+let returningToFront = false;
+let isVisible = true;
+let running = false;
+
+// Interaction / inertia state
+let dragging = false;
+let pointerId = null;
+let lastX = 0, lastY = 0;
+let velY = AUTO_SPEED;  // yaw velocity (carries fling momentum)
+let velX = 0;           // pitch velocity
+
+const textureCache = new Map();
+
+// Material names from the GLB: "cover", "spine", "back", "Car_plastic_dark"
+
+function clamp(v, lo, hi) {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
+function makeSpineTexture(title, year) {
+  // The canvas WIDTH maps to the spine's narrow on-screen dimension (~25px).
+  // Keep cw small so the font fills that width — a 256px canvas shrunk to
+  // 25px makes a 42px font appear as only ~4px tall, which is unreadable.
+  // 64×1024 means 42px font fills ~65% of the narrow axis: legible.
+  const cw = 64, ch = 1024;
+  const canvas = document.createElement("canvas");
+  canvas.width = cw;
+  canvas.height = ch;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#1a1a2e";
+  ctx.fillRect(0, 0, cw, ch);
+
+  // Rotate CCW so text flows bottom-to-top along the spine.
+  ctx.save();
+  ctx.translate(cw / 2, ch / 2);
+  ctx.rotate(Math.PI / 2);
+
+  const label = year ? `${title}  ·  ${year}` : title;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#f0e8d8";
+  ctx.font = "bold 42px sans-serif";
+
+  ctx.fillText(label, 0, 0, ch - 64);
+
+  ctx.restore();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  // flipY = true (CanvasTexture default) is correct here — the GLTFLoader
+  // transforms mesh UVs to OpenGL convention, so our custom textures must
+  // also use the standard Three.js (OpenGL) flipY = true orientation.
+  return tex;
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxY) {
+  const words = text.split(" ");
+  let line = "";
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      ctx.fillText(line, x, y);
+      line = word;
+      y += lineHeight;
+      if (y + lineHeight > maxY) {
+        let tail = line;
+        while (ctx.measureText(tail + "…").width > maxWidth && tail.length > 1) {
+          tail = tail.slice(0, -1);
+        }
+        ctx.fillText(tail + "…", x, y);
+        return;
+      }
+    } else {
+      line = test;
+    }
+  }
+  if (line) ctx.fillText(line, x, y);
+}
+
+function truncate(ctx, text, maxWidth) {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let t = text;
+  while (ctx.measureText(t + "…").width > maxWidth && t.length > 1) t = t.slice(0, -1);
+  return t + "…";
+}
+
+function makeBackTexture(movie) {
+  const cw = 512, ch = 730;
+  const canvas = document.createElement("canvas");
+  canvas.width = cw;
+  canvas.height = ch;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#0e0e1c";
+  ctx.fillRect(0, 0, cw, ch);
+
+  // Subtle accent bar at top
+  ctx.fillStyle = "rgba(240,232,216,0.07)";
+  ctx.fillRect(0, 0, cw, 6);
+
+  const pad = 36;
+  const maxW = cw - pad * 2;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+
+  // Title
+  ctx.fillStyle = "#f0e8d8";
+  ctx.font = "bold 44px sans-serif";
+  ctx.fillText(truncate(ctx, movie.title, maxW), pad, 38);
+
+  // Meta row
+  const metaParts = [
+    movie.year,
+    movie.director ? `Dir. ${movie.director}` : null,
+    movie.runtime ? `${movie.runtime} min` : null,
+  ].filter(Boolean);
+
+  if (metaParts.length) {
+    ctx.fillStyle = "#8a8070";
+    ctx.font = "23px sans-serif";
+    let meta = metaParts.join("  ·  ");
+    if (ctx.measureText(meta).width > maxW) meta = metaParts.slice(0, 2).join("  ·  ");
+    ctx.fillText(truncate(ctx, meta, maxW), pad, 96);
+  }
+
+  // Separator
+  ctx.strokeStyle = "rgba(240,232,216,0.15)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad, 138);
+  ctx.lineTo(cw - pad, 138);
+  ctx.stroke();
+
+  // Overview
+  if (movie.overview) {
+    ctx.fillStyle = "#c0b8a8";
+    ctx.font = "25px sans-serif";
+    wrapText(ctx, movie.overview, pad, 162, maxW, 36, ch - pad);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function loadTexture(url) {
+  if (!url) return Promise.resolve(null);
+  if (textureCache.has(url)) return Promise.resolve(textureCache.get(url));
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      // Use the image directly (no intermediate canvas) so a cross-origin
+      // poster can't taint a canvas and come back blank.
+      // The cover quad only needs a VERTICAL flip: with flipY=false the raw
+      // poster comes out upside-down but horizontally correct, so flipY=true
+      // sets it upright. (The old `rotation = Math.PI` flipped BOTH axes, which
+      // looked upright but left the artwork mirrored left-to-right.)
+      const tex = new THREE.Texture(img);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.flipY = true;
+      tex.anisotropy = renderer?.capabilities.getMaxAnisotropy?.() || 1;
+      tex.needsUpdate = true;
+      textureCache.set(url, tex);
+      resolve(tex);
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+function applyMovieTextures(movie) {
+  if (!model || !movie) return;
+
+  const frontUrl = movie.posterUrl || null;
+  const spineTex = makeSpineTexture(movie.title, movie.year);
+
+  model.traverse((node) => {
+    if (!node.isMesh) return;
+    const matName = (node.material?.name || "").toLowerCase();
+
+    if (matName === "cover" && frontUrl) {
+      loadTexture(frontUrl).then((tex) => {
+        if (!tex) return;
+        const mat = node.material.clone();
+        mat.map = tex;
+        mat.color.set(0xffffff);
+        mat.needsUpdate = true;
+        node.material = mat;
+      });
+    } else if (matName === "spine") {
+      const mat = node.material.clone();
+      mat.map = spineTex;
+      mat.color.set(0xffffff);
+      mat.needsUpdate = true;
+      node.material = mat;
+    } else if (matName === "back") {
+      if (movie.backCoverUrl) {
+        loadTexture(movie.backCoverUrl).then((tex) => {
+          if (!tex) return;
+          const mat = node.material.clone();
+          mat.map = tex;
+          mat.color.set(0xffffff);
+          mat.needsUpdate = true;
+          node.material = mat;
+        });
+      } else {
+        const mat = node.material.clone();
+        mat.map = makeBackTexture(movie);
+        mat.color.set(0xffffff);
+        mat.needsUpdate = true;
+        node.material = mat;
+      }
+    }
+  });
+}
+
+function updateMovie(movie) {
+  currentMovie = movie;
+  if (!dragging) returningToFront = true;
+  if (model) {
+    applyMovieTextures(movie);
+  } else {
+    pendingMovie = movie;
+  }
+}
+
+/* ------------------------------ interaction ------------------------------ */
+
+function onPointerDown(e) {
+  if (pointerId !== null) return;
+  dragging = true;
+  returningToFront = false;
+  pointerId = e.pointerId;
+  lastX = e.clientX;
+  lastY = e.clientY;
+  velY = 0;
+  velX = 0;
+  canvasEl.setPointerCapture?.(pointerId);
+  startLoop();
+  e.preventDefault();
+}
+
+function onPointerMove(e) {
+  if (!dragging || e.pointerId !== pointerId || !model) return;
+  const dx = e.clientX - lastX;
+  const dy = e.clientY - lastY;
+  lastX = e.clientX;
+  lastY = e.clientY;
+
+  model.rotation.y += dx * DRAG_SENS;
+  model.rotation.x = clamp(model.rotation.x - dy * TILT_SENS, -MAX_TILT, MAX_TILT);
+
+  // Remember the last movement as the fling velocity for release.
+  velY = dx * DRAG_SENS;
+  velX = -dy * TILT_SENS;
+}
+
+function endDrag(e) {
+  if (!dragging || (e && e.pointerId !== pointerId)) return;
+  dragging = false;
+  if (pointerId !== null) canvasEl.releasePointerCapture?.(pointerId);
+  pointerId = null;
+}
+
+/* -------------------------------- viewer --------------------------------- */
+
+function createViewer() {
+  viewerDiv = document.createElement("div");
+  viewerDiv.className = "case-viewer-container";
+
+  canvasEl = document.createElement("canvas");
+  canvasEl.className = "case-viewer-canvas";
+  viewerDiv.append(canvasEl);
+
+  renderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  renderer.setSize(DEFAULT_W, DEFAULT_H);
+
+  scene = new THREE.Scene();
+
+  // Image-based lighting: a PMREM of the built-in room gives the glossy
+  // plastic shell realistic soft reflections without loading an external HDR.
+  try {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  } catch (err) {
+    console.warn("Environment map unavailable, falling back to lights only:", err);
+  }
+
+  camera = new THREE.PerspectiveCamera(32, DEFAULT_W / DEFAULT_H, 0.1, 100);
+  camera.position.set(0, 0.1, 2.2);
+  camera.lookAt(0, 0, 0);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+  const key = new THREE.DirectionalLight(0xffffff, 1.3);
+  key.position.set(2, 3, 4);
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xb0c4de, 0.45);
+  fill.position.set(-2, 1, -2);
+  scene.add(fill);
+  const rim = new THREE.DirectionalLight(0xffffff, 0.35);
+  rim.position.set(0, -1, -3);
+  scene.add(rim);
+
+  const loader = new GLTFLoader();
+  loader.load(
+    GLB_PATH,
+    (gltf) => {
+      model = gltf.scene;
+
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const scale = 1.2 / maxDim;
+      model.scale.setScalar(scale);
+      model.position.set(
+        -center.x * scale,
+        -center.y * scale,
+        -center.z * scale,
+      );
+
+      scene.add(model);
+
+      const target = pendingMovie || currentMovie;
+      if (target) applyMovieTextures(target);
+      pendingMovie = null;
+    },
+    undefined,
+    (err) => console.error("GLB load error:", err),
+  );
+
+  canvasEl.addEventListener("pointerdown", onPointerDown);
+  canvasEl.addEventListener("pointermove", onPointerMove);
+  canvasEl.addEventListener("pointerup", endDrag);
+  canvasEl.addEventListener("pointercancel", endDrag);
+  canvasEl.addEventListener("lostpointercapture", endDrag);
+
+  startLoop();
+}
+
+const clock = new THREE.Clock();
+
+function tick() {
+  animFrameId = null;
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const f = dt * 60; // frame-normalised factor
+
+  if (model) {
+    if (dragging) {
+      // Direct manipulation handled in onPointerMove; nothing to integrate.
+    } else if (returningToFront) {
+      // Swing the cover back to face front and level out the tilt.
+      const twoPi = Math.PI * 2;
+      const cur = ((model.rotation.y % twoPi) + twoPi) % twoPi;
+      const target = cur > Math.PI ? twoPi : 0;
+      const goal = model.rotation.y - (model.rotation.y % twoPi) + target;
+      const ease = Math.min(1, f * 0.1);
+      model.rotation.y += (goal - model.rotation.y) * ease;
+      model.rotation.x += (0 - model.rotation.x) * ease;
+      if (Math.abs(goal - model.rotation.y) < 0.01 && Math.abs(model.rotation.x) < 0.01) {
+        model.rotation.y = 0;
+        model.rotation.x = 0;
+        returningToFront = false;
+        velY = AUTO_SPEED;
+      }
+    } else {
+      // Free spin with fling momentum that settles into the gentle auto-rotate.
+      model.rotation.y += velY * f;
+      model.rotation.x += velX * f;
+      // Yaw velocity decays toward the idle baseline (a fling coasts, then
+      // eases into the slow auto-rotate rather than stopping dead).
+      velY = AUTO_SPEED + (velY - AUTO_SPEED) * Math.pow(SPIN_DAMPING, f);
+      // Pitch bleeds off and the case self-levels.
+      velX *= Math.pow(SPIN_DAMPING, f);
+      model.rotation.x += (0 - model.rotation.x) * Math.min(1, TILT_RECENTER * f);
+    }
+  }
+
+  renderer.render(scene, camera);
+  if (running) animFrameId = requestAnimationFrame(tick);
+}
+
+function startLoop() {
+  if (running || !isVisible) return;
+  running = true;
+  clock.getDelta(); // discard the gap accumulated while paused
+  animFrameId = requestAnimationFrame(tick);
+}
+
+function stopLoop() {
+  running = false;
+  if (animFrameId !== null) {
+    cancelAnimationFrame(animFrameId);
+    animFrameId = null;
+  }
+}
+
+function resizeToContainer() {
+  if (!viewerDiv || !renderer || !camera) return;
+  const w = viewerDiv.clientWidth || DEFAULT_W;
+  const h = viewerDiv.clientHeight || DEFAULT_H;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  if (!running) renderer.render(scene, camera); // keep the still frame fresh
+}
+
+function insertViewer() {
+  const posterEl = document.getElementById("detail-poster");
+  if (!posterEl) return;
+  const wrapper = posterEl.querySelector(".detail-poster-wrap");
+  if (!wrapper) return;
+  if (viewerDiv.parentElement === wrapper) return;
+
+  wrapper.querySelectorAll(".detail-case").forEach((el) => {
+    el.style.display = "none";
+  });
+
+  wrapper.prepend(viewerDiv);
+  requestAnimationFrame(() => requestAnimationFrame(resizeToContainer));
+}
+
+function boot() {
+  createViewer();
+
+  const posterEl = document.getElementById("detail-poster");
+  if (!posterEl) return;
+
+  insertViewer();
+
+  const observer = new MutationObserver(() => insertViewer());
+  observer.observe(posterEl, { childList: true });
+
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(() => requestAnimationFrame(resizeToContainer)).observe(viewerDiv);
+  }
+
+  // Only render while the case is actually on-screen — stops the GPU/CPU
+  // loop when no movie is selected or the panel is scrolled/tabbed away.
+  if (typeof IntersectionObserver !== "undefined") {
+    new IntersectionObserver((entries) => {
+      isVisible = entries.some((entry) => entry.isIntersecting);
+      if (isVisible) startLoop();
+      else stopLoop();
+    }, { threshold: 0.01 }).observe(viewerDiv);
+  }
+
+  // Pause when the tab is backgrounded.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      stopLoop();
+    } else if (isVisible) {
+      startLoop();
+    }
+  });
+}
+
+window.caseViewer = { updateMovie };
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => setTimeout(boot, 120));
+} else {
+  setTimeout(boot, 120);
+}

@@ -1,0 +1,11 @@
+{
+  "name": "movie-directory",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "catalog:bootstrap": "node ./scripts/build-catalog-workbook.mjs",
+    "catalog:sync": "node ./scripts/sync-catalog-to-app.mjs",
+    "catalog:posters": "node ./scripts/backfill-posters-from-tmdb.mjs",
+    "serve": "node ./scripts/serve.mjs"
+  }
+}

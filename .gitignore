@@ -1,0 +1,5 @@
+node_modules/
+outputs/catalog/backups/
+.serve.err.log
+.serve.log
+.env

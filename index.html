@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movie Directory</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css?v=20260705-ui">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-block">
+        <p class="brand-kicker">Personal Archive</p>
+        <h1>Movie Directory</h1>
+        <p class="brand-copy">A browsable catalog for your physical media shelves, lists, and favorites.</p>
+      </div>
+
+      <section class="sidebar-search-panel">
+        <label class="sr-only" for="search-input">Search movies</label>
+        <input id="search-input" type="search" placeholder="Search titles, genres, tags, directors, UPC">
+        <p class="sidebar-search-copy">Search the library, or jump straight into formats, editions, and collection traits.</p>
+      </section>
+
+      <nav class="sidebar-nav" aria-label="Library sections">
+        <section class="nav-group">
+          <h2>Library Filters</h2>
+          <div id="library-nav" class="nav-stack"></div>
+        </section>
+        <section class="nav-group">
+          <h2>Genres</h2>
+          <div id="genre-nav" class="nav-stack"></div>
+        </section>
+        <section class="nav-group">
+          <div class="sidebar-section-header">
+            <h2>Your Lists</h2>
+            <button id="new-list-button" class="ghost-button sidebar-section-action" type="button">New List</button>
+          </div>
+          <div id="list-nav" class="nav-stack"></div>
+        </section>
+        <section class="nav-group">
+          <h2>AI Playlists</h2>
+          <div id="playlist-nav" class="nav-stack"></div>
+        </section>
+        <section class="nav-group">
+          <h2>Directors</h2>
+          <div id="director-nav" class="nav-stack"></div>
+        </section>
+      </nav>
+    </aside>
+
+    <main class="main-stage">
+      <header class="topbar">
+        <div class="toolbar-controls">
+          <label>
+            <span>Theme</span>
+            <select id="theme-select">
+              <option value="warm">Warm</option>
+              <option value="midnight">Midnight</option>
+              <option value="ocean">Ocean</option>
+              <option value="forest">Forest</option>
+              <option value="rose">Ros&#233;</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Sort</span>
+            <select id="sort-select">
+              <option value="inventory">Inventory Order</option>
+              <option value="title">Title A-Z</option>
+              <option value="section">Category</option>
+              <option value="favorites">Favorites First</option>
+              <option value="value">Most Valuable</option>
+              <option value="rating">Highest Rated</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Organize</span>
+            <select id="group-select">
+              <option value="none">Flat View</option>
+              <option value="section">By Category</option>
+              <option value="format">By Format</option>
+              <option value="director">By Director</option>
+              <option value="tag">By Collection Tag</option>
+            </select>
+          </label>
+
+          <div class="views-menu">
+            <button
+              id="views-menu-button"
+              class="ghost-button views-trigger"
+              type="button"
+              aria-haspopup="true"
+              aria-expanded="false"
+            >
+              <span>Views</span>
+              <span id="views-menu-current" class="views-current">Grid</span>
+            </button>
+            <div id="views-menu-panel" class="views-menu-panel" hidden>
+              <button class="view-option is-active" type="button" data-view-option="grid">Grid View</button>
+              <button class="view-option" type="button" data-view-option="list">List View</button>
+            </div>
+          </div>
+
+          <button id="add-movie-button" class="new-list-button" type="button">+ Add Movie</button>
+        </div>
+      </header>
+
+      <section id="runtime-banner" class="runtime-banner" hidden aria-live="polite"></section>
+
+      <section class="content-header">
+        <div>
+          <p id="active-context-label" class="context-label">Library</p>
+          <h2 id="results-heading">All Movies</h2>
+        </div>
+        <p id="results-summary" class="results-summary"></p>
+      </section>
+
+      <section id="collection-container" class="collection-container" aria-live="polite"></section>
+    </main>
+
+    <aside class="detail-panel">
+      <div id="detail-empty" class="detail-empty">
+        <p class="detail-eyebrow">Selection</p>
+        <h2>Choose a title</h2>
+        <p>Select any movie card to see tags, collection placement, and custom list controls.</p>
+      </div>
+
+      <div id="detail-content" class="detail-content" hidden>
+        <div id="detail-poster" class="detail-poster"></div>
+        <div class="detail-meta">
+          <div class="detail-heading-row">
+            <div>
+              <p id="detail-section" class="detail-section"></p>
+              <h2 id="detail-title"></h2>
+            </div>
+            <button id="detail-favorite-button" class="favorite-button detail-favorite" type="button" aria-label="Toggle favorite"></button>
+          </div>
+
+          <p id="detail-subtitle" class="detail-subtitle"></p>
+          <div id="detail-tags" class="chip-row detail-chip-row"></div>
+
+          <div class="detail-block">
+            <div class="detail-block-heading">
+              <h3>Library Settings</h3>
+              <p id="detail-save-status" class="save-status">Live from catalog</p>
+            </div>
+            <div class="editor-grid">
+              <label class="editor-field">
+                <span>Media Format</span>
+                <select id="detail-primary-format">
+                  <option value="DVD">DVD</option>
+                  <option value="Blu-ray">Blu-ray</option>
+                  <option value="4K">4K</option>
+                  <option value="4K + Blu-ray">4K + Blu-ray</option>
+                </select>
+              </label>
+              <label class="editor-toggle">
+                <input id="detail-steelbook" type="checkbox">
+                <span>Steelbook</span>
+              </label>
+              <label class="editor-toggle">
+                <input id="detail-criterion" type="checkbox">
+                <span>Criterion</span>
+              </label>
+              <label class="editor-toggle">
+                <input id="detail-movies-anywhere" type="checkbox">
+                <span>Movies Anywhere</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="detail-block">
+            <div class="detail-block-heading">
+              <h3>Watch & Rate</h3>
+            </div>
+            <div class="editor-grid">
+              <label class="editor-field">
+                <span>Watch Status</span>
+                <select id="detail-watch-status">
+                  <option value="">Not Set</option>
+                  <option value="Unwatched">Unwatched</option>
+                  <option value="Watched">Watched</option>
+                  <option value="Rewatching">Rewatching</option>
+                </select>
+              </label>
+              <label class="editor-field">
+                <span>Personal Rating</span>
+                <div class="star-rating" id="detail-rating"></div>
+              </label>
+              <label class="editor-field">
+                <span>Notes</span>
+                <textarea id="detail-notes" rows="2" placeholder="Personal notes..."></textarea>
+              </label>
+            </div>
+          </div>
+
+          <div class="detail-block">
+            <div class="detail-block-heading">
+              <h3>Value & Condition</h3>
+            </div>
+            <div class="editor-grid">
+              <label class="editor-field">
+                <span>Purchase Price</span>
+                <input id="detail-purchase-price" type="number" step="0.01" min="0" placeholder="0.00">
+              </label>
+              <label class="editor-field">
+                <span>Estimated Value</span>
+                <input id="detail-estimated-value" type="number" step="0.01" min="0" placeholder="0.00">
+              </label>
+              <label class="editor-field">
+                <span>Condition</span>
+                <select id="detail-condition">
+                  <option value="">Not Set</option>
+                  <option value="Mint">Mint</option>
+                  <option value="Like New">Like New</option>
+                  <option value="Good">Good</option>
+                  <option value="Fair">Fair</option>
+                  <option value="Poor">Poor</option>
+                </select>
+              </label>
+              <label class="editor-field">
+                <span>Value Source</span>
+                <input id="detail-value-source" type="text" placeholder="eBay, PriceCharting...">
+              </label>
+            </div>
+          </div>
+
+          <div class="detail-block">
+            <div class="detail-block-heading">
+              <h3>Special Features</h3>
+              <button id="detail-edit-features-button" class="text-action" type="button">Edit</button>
+            </div>
+            <div id="detail-special-features" class="chip-row detail-chip-row"></div>
+          </div>
+
+          <div class="detail-block">
+            <div class="detail-block-heading">
+              <h3>Custom Lists</h3>
+              <button id="detail-create-list-button" class="text-action" type="button">Create list</button>
+            </div>
+            <div id="detail-lists" class="list-membership"></div>
+          </div>
+
+          <div class="detail-block">
+            <h3>Inventory Notes</h3>
+            <dl class="detail-facts">
+              <div>
+                <dt>Inventory #</dt>
+                <dd id="detail-number"></dd>
+              </div>
+              <div>
+                <dt>Collection</dt>
+                <dd id="detail-collection"></dd>
+              </div>
+              <div>
+                <dt>Edition</dt>
+                <dd id="detail-edition"></dd>
+              </div>
+              <div>
+                <dt>Year</dt>
+                <dd id="detail-year"></dd>
+              </div>
+              <div>
+                <dt>Director</dt>
+                <dd id="detail-director"></dd>
+              </div>
+              <div>
+                <dt>Runtime</dt>
+                <dd id="detail-runtime"></dd>
+              </div>
+              <div>
+                <dt>UPC</dt>
+                <dd id="detail-upc"></dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="detail-block" id="detail-overview-block" hidden>
+            <h3>Overview</h3>
+            <p id="detail-overview" class="detail-overview-text"></p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- List Modal -->
+  <div id="list-modal" class="modal" hidden>
+    <div class="modal-backdrop" data-close-modal="list-modal"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="list-modal-title">
+      <div class="modal-header">
+        <div>
+          <p class="context-label">Custom List</p>
+          <h2 id="list-modal-title">Create a new list</h2>
+        </div>
+        <button class="icon-button close-modal-button" type="button" aria-label="Close modal" data-close-modal="list-modal">×</button>
+      </div>
+      <form id="list-form" class="list-form">
+        <label>
+          <span>List name</span>
+          <input id="list-name-input" name="name" type="text" maxlength="40" placeholder="Friday Night Picks" required>
+        </label>
+        <div class="modal-actions">
+          <button class="text-action" type="button" data-close-modal="list-modal">Cancel</button>
+          <button class="new-list-button" type="submit">Save List</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Movie Modal -->
+  <div id="add-movie-modal" class="modal" hidden>
+    <div class="modal-backdrop" data-close-modal="add-movie-modal"></div>
+    <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="add-movie-modal-title">
+      <div class="modal-header">
+        <div>
+          <p class="context-label">Add to Collection</p>
+          <h2 id="add-movie-modal-title">Add a Movie</h2>
+        </div>
+        <button class="icon-button close-modal-button" type="button" aria-label="Close modal" data-close-modal="add-movie-modal">×</button>
+      </div>
+
+      <div class="add-movie-tabs">
+        <button class="tab-button is-active" type="button" data-tab="manual">Manual Entry</button>
+        <button class="tab-button" type="button" data-tab="search">TMDb Search</button>
+        <button class="tab-button" type="button" data-tab="upc">UPC Lookup</button>
+      </div>
+
+      <div id="add-movie-tab-content">
+        <!-- UPC Tab -->
+        <div id="tab-upc" class="tab-panel" hidden>
+          <div class="upc-lookup-form">
+            <label>
+              <span>UPC / Barcode</span>
+              <input id="upc-input" type="text" placeholder="Enter UPC barcode number" maxlength="20">
+            </label>
+            <button id="upc-lookup-button" class="new-list-button" type="button">Look Up</button>
+          </div>
+          <div id="upc-results" class="search-results"></div>
+        </div>
+
+        <!-- TMDb Search Tab -->
+        <div id="tab-search" class="tab-panel" hidden>
+          <div class="tmdb-search-form">
+            <label>
+              <span>Search TMDb</span>
+              <input id="tmdb-search-input" type="text" placeholder="Type a movie title...">
+            </label>
+            <button id="tmdb-search-button" class="new-list-button" type="button">Search</button>
+          </div>
+          <div id="tmdb-results" class="search-results"></div>
+        </div>
+
+        <!-- Manual Tab / Confirmation Form -->
+        <div id="tab-manual" class="tab-panel">
+          <form id="add-movie-form" class="add-movie-form">
+            <div class="form-grid">
+              <label class="editor-field span-2">
+                <span>Title *</span>
+                <input id="add-title" type="text" required placeholder="Movie title">
+              </label>
+              <label class="editor-field">
+                <span>Section / Category</span>
+                <select id="add-section">
+                  <option value="General 4K / Blu-ray">General 4K / Blu-ray</option>
+                  <option value="Animation / Family">Animation / Family</option>
+                  <option value="Studio Ghibli">Studio Ghibli</option>
+                  <option value="Action / Drama / Sci-Fi">Action / Drama / Sci-Fi</option>
+                  <option value="Horror">Horror</option>
+                  <option value="Criterion Collection">Criterion Collection</option>
+                  <option value="Director Collections">Director Collections</option>
+                  <option value="Marvel / Superhero">Marvel / Superhero</option>
+                </select>
+              </label>
+              <label class="editor-field">
+                <span>Format</span>
+                <select id="add-format">
+                  <option value="Blu-ray">Blu-ray</option>
+                  <option value="4K">4K</option>
+                  <option value="4K + Blu-ray">4K + Blu-ray</option>
+                  <option value="DVD">DVD</option>
+                </select>
+              </label>
+              <label class="editor-field">
+                <span>Year</span>
+                <input id="add-year" type="number" min="1900" max="2100" placeholder="2024">
+              </label>
+              <label class="editor-field">
+                <span>Director</span>
+                <input id="add-director" type="text" placeholder="Director name">
+              </label>
+              <label class="editor-field">
+                <span>Director Collection</span>
+                <input id="add-director-collection" type="text" placeholder="e.g. Christopher Nolan">
+              </label>
+              <label class="editor-field">
+                <span>Collection Type</span>
+                <select id="add-collection-type">
+                  <option value="Single Feature">Single Feature</option>
+                  <option value="Series">Series</option>
+                  <option value="Trilogy">Trilogy</option>
+                  <option value="Collection">Collection</option>
+                  <option value="Director Set">Director Set</option>
+                </select>
+              </label>
+              <label class="editor-field">
+                <span>UPC</span>
+                <input id="add-upc" type="text" placeholder="Barcode number">
+              </label>
+              <label class="editor-field">
+                <span>Purchase Price</span>
+                <input id="add-price" type="number" step="0.01" min="0" placeholder="0.00">
+              </label>
+              <label class="editor-field">
+                <span>Condition</span>
+                <select id="add-condition">
+                  <option value="">Not Set</option>
+                  <option value="Mint">Mint</option>
+                  <option value="Like New">Like New</option>
+                  <option value="Good">Good</option>
+                  <option value="Fair">Fair</option>
+                  <option value="Poor">Poor</option>
+                </select>
+              </label>
+              <div class="editor-toggles span-2">
+                <label class="editor-toggle">
+                  <input id="add-steelbook" type="checkbox">
+                  <span>Steelbook</span>
+                </label>
+                <label class="editor-toggle">
+                  <input id="add-criterion" type="checkbox">
+                  <span>Criterion</span>
+                </label>
+                <label class="editor-toggle">
+                  <input id="add-movies-anywhere" type="checkbox">
+                  <span>Movies Anywhere</span>
+                </label>
+              </div>
+              <label class="editor-field span-2">
+                <span>Special Features</span>
+                <div id="add-special-features" class="chip-row editable-chips"></div>
+                <input id="add-special-features-input" type="text" placeholder="Type and press Enter to add">
+              </label>
+              <label class="editor-field span-2">
+                <span>Notes</span>
+                <textarea id="add-notes" rows="2" placeholder="Edition notes, personal notes..."></textarea>
+              </label>
+            </div>
+            <input id="add-tmdb-id" type="hidden">
+            <input id="add-poster-url" type="hidden">
+            <input id="add-overview" type="hidden">
+            <input id="add-genre" type="hidden">
+            <input id="add-runtime" type="hidden">
+            <div class="modal-actions">
+              <button class="text-action" type="button" data-close-modal="add-movie-modal">Cancel</button>
+              <button class="new-list-button" type="submit">Add to Collection</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Special Features Modal -->
+  <div id="features-modal" class="modal" hidden>
+    <div class="modal-backdrop" data-close-modal="features-modal"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="features-modal-title">
+      <div class="modal-header">
+        <div>
+          <p class="context-label">Disc Contents</p>
+          <h2 id="features-modal-title">Special Features</h2>
+        </div>
+        <button class="icon-button close-modal-button" type="button" aria-label="Close modal" data-close-modal="features-modal">×</button>
+      </div>
+      <div class="features-checklist" id="features-checklist"></div>
+      <div class="features-custom">
+        <input id="custom-feature-input" type="text" placeholder="Add custom feature...">
+        <button id="add-custom-feature-button" class="ghost-button" type="button">Add</button>
+      </div>
+      <div class="modal-actions">
+        <button class="text-action" type="button" data-close-modal="features-modal">Cancel</button>
+        <button id="save-features-button" class="new-list-button" type="button">Save Features</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Poster Carousel Modal -->
+  <div id="poster-modal" class="modal" hidden>
+    <div class="modal-backdrop" data-close-modal="poster-modal"></div>
+    <div class="modal-card poster-modal-card" role="dialog" aria-modal="true" aria-labelledby="poster-modal-title">
+      <div class="modal-header">
+        <div>
+          <p class="context-label">Cover Art</p>
+          <h2 id="poster-modal-title">Choose Cover</h2>
+        </div>
+        <button class="icon-button close-modal-button" type="button" aria-label="Close modal" data-close-modal="poster-modal">×</button>
+      </div>
+      <div id="poster-carousel-body" class="poster-carousel-body"></div>
+    </div>
+  </div>
+
+  <template id="movie-card-template">
+    <article class="movie-card">
+      <button class="poster-button" type="button">
+        <div class="poster-art">
+          <div class="poster-sheen"></div>
+          <img class="poster-img" hidden>
+          <div class="poster-copy">
+            <p class="poster-format"></p>
+            <h3 class="poster-title"></h3>
+          </div>
+        </div>
+      </button>
+      <div class="movie-card-body">
+        <div class="movie-card-header">
+          <div>
+            <p class="movie-section"></p>
+            <h3 class="movie-title"></h3>
+          </div>
+          <button class="favorite-button" type="button" aria-label="Toggle favorite"></button>
+        </div>
+        <div class="chip-row movie-chip-row"></div>
+        <div class="movie-card-footer">
+          <button class="ghost-button open-detail-button" type="button">Details</button>
+          <button class="ghost-button add-list-button" type="button">Manage Lists</button>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <template id="movie-row-template">
+    <article class="movie-row">
+      <button class="row-poster-button" type="button">
+        <div class="row-poster"></div>
+      </button>
+      <div class="row-main">
+        <div class="row-title-wrap">
+          <p class="movie-section"></p>
+          <h3 class="movie-title"></h3>
+        </div>
+        <div class="chip-row movie-chip-row"></div>
+      </div>
+      <div class="row-actions">
+        <button class="favorite-button" type="button" aria-label="Toggle favorite"></button>
+        <button class="ghost-button open-detail-button" type="button">Details</button>
+      </div>
+    </article>
+  </template>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+      }
+    }
+  </script>
+  <script src="./movies-data.js?v=20260705-ui"></script>
+  <script src="./app.js?v=20260705-ui"></script>
+  <script type="module" src="./case-viewer.js?v=20260705-interactive6"></script>
+</body>
+</html>
