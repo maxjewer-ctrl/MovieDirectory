@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=20260705-mobile-sidebar">
+  <link rel="stylesheet" href="./styles.css?v=20260705-mobile2">
 </head>
 <body>
   <div class="app-shell">
@@ -25,6 +25,50 @@
       </section>
 
       <nav class="sidebar-nav" aria-label="Library sections">
+        <section class="nav-group mobile-view-controls">
+          <h2>Sort &amp; View</h2>
+          <div class="sidebar-selects">
+            <label>
+              <span>Theme</span>
+              <select id="theme-select-m">
+                <option value="warm">Warm</option>
+                <option value="midnight">Midnight</option>
+                <option value="ocean">Ocean</option>
+                <option value="forest">Forest</option>
+                <option value="rose">Rosé</option>
+              </select>
+            </label>
+            <label>
+              <span>Sort</span>
+              <select id="sort-select-m">
+                <option value="inventory">Inventory Order</option>
+                <option value="title">Title A-Z</option>
+                <option value="section">Category</option>
+                <option value="favorites">Favorites First</option>
+                <option value="value">Most Valuable</option>
+                <option value="rating">Highest Rated</option>
+              </select>
+            </label>
+            <label>
+              <span>Organize</span>
+              <select id="group-select-m">
+                <option value="none">Flat View</option>
+                <option value="section">By Category</option>
+                <option value="format">By Format</option>
+                <option value="director">By Director</option>
+                <option value="tag">By Collection Tag</option>
+              </select>
+            </label>
+            <label>
+              <span>View</span>
+              <select id="view-select-m">
+                <option value="grid">Grid</option>
+                <option value="list">List</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
         <section class="nav-group">
           <h2>Library Filters</h2>
           <div id="library-nav" class="nav-stack"></div>
@@ -109,8 +153,8 @@
             </div>
           </div>
 
-          <button id="add-movie-button" class="new-list-button" type="button">+ Add Movie</button>
         </div>
+        <button id="add-movie-button" class="new-list-button topbar-add-btn" type="button">+ Add Movie</button>
       </header>
 
       <section id="runtime-banner" class="runtime-banner" hidden aria-live="polite"></section>
@@ -528,9 +572,12 @@
           <button class="favorite-button" type="button" aria-label="Toggle favorite"></button>
         </div>
         <div class="chip-row movie-chip-row"></div>
+        <div class="card-meta-row">
+          <div class="format-badges"></div>
+          <button class="watch-toggle" type="button" aria-label="Toggle watched">○</button>
+        </div>
         <div class="movie-card-footer">
           <button class="ghost-button open-detail-button" type="button">Details</button>
-          <button class="ghost-button add-list-button" type="button">Manage Lists</button>
         </div>
       </div>
     </article>
@@ -563,8 +610,8 @@
       }
     }
   </script>
-  <script src="./movies-data.js?v=20260705-mobile-sidebar"></script>
-  <script src="./app.js?v=20260705-mobile-sidebar"></script>
+  <script src="./movies-data.js?v=20260705-mobile2"></script>
+  <script src="./app.js?v=20260705-mobile2"></script>
   <script type="module" src="./case-viewer.js?v=20260705-interactive6"></script>
 </body>
 </html>

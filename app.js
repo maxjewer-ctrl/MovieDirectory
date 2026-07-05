@@ -124,6 +124,11 @@ const dom = {
   rowTemplate: document.querySelector("#movie-row-template"),
   sidebarToggle: document.querySelector("#sidebar-toggle"),
   sidebar: document.querySelector("#sidebar"),
+  detailPanel: document.querySelector(".detail-panel"),
+  themeSelectM: document.querySelector("#theme-select-m"),
+  sortSelectM: document.querySelector("#sort-select-m"),
+  groupSelectM: document.querySelector("#group-select-m"),
+  viewSelectM: document.querySelector("#view-select-m"),
 };
 
 const libraryFilterDefinitions = [
@@ -882,6 +887,9 @@ function selectMovie(movieId) {
   appState.selectedMovieId = movieId;
   saveState();
   renderDetail();
+  if (window.innerWidth <= 1100 && dom.detailPanel) {
+    dom.detailPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 function render() {
@@ -1081,12 +1089,18 @@ function renderMovieCard(movie) {
   node.querySelector(".movie-title").textContent = movie.title;
   decorateFavoriteButton(node.querySelector(".favorite-button"), movie.id);
   renderTags(node.querySelector(".movie-chip-row"), getVisibleTags(movie));
+  renderFormatBadges(node.querySelector(".format-badges"), movie);
+  const watchBtn = node.querySelector(".watch-toggle");
+  updateWatchToggle(watchBtn, movie.watchStatus);
+  watchBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const next = movie.watchStatus === "Watched" ? "Unwatched" : "Watched";
+    movie.watchStatus = next;
+    updateWatchToggle(watchBtn, next);
+    saveMovieMetadata(movie.id, { watchStatus: next });
+  });
   node.querySelector(".poster-button").addEventListener("click", () => selectMovie(movie.id));
   node.querySelector(".open-detail-button").addEventListener("click", () => {
-    selectMovie(movie.id);
-    focusDetailPanel();
-  });
-  node.querySelector(".add-list-button").addEventListener("click", () => {
     selectMovie(movie.id);
     focusDetailPanel();
   });
@@ -1128,6 +1142,33 @@ function renderTags(container, tags) {
     chip.textContent = tag;
     container.append(chip);
   }
+}
+
+function renderFormatBadges(container, movie) {
+  container.innerHTML = "";
+  const fmt = movie.primaryFormat || "";
+  const defs = [];
+  if (fmt.includes("4K")) defs.push({ cls: "fmt-4k", label: "4K", title: "4K UHD" });
+  if (fmt.includes("Blu-ray")) defs.push({ cls: "fmt-bd", label: "BD", title: "Blu-ray" });
+  if (fmt === "DVD") defs.push({ cls: "fmt-dvd", label: "DVD", title: "DVD" });
+  if (movie.criterion) defs.push({ cls: "fmt-cc", label: "CC", title: "Criterion Collection" });
+  if (movie.steelbook) defs.push({ cls: "fmt-sb", label: "SB", title: "Steelbook" });
+  if (movie.moviesAnywhere) defs.push({ cls: "fmt-ma", label: "MA", title: "Movies Anywhere" });
+  for (const d of defs) {
+    const span = document.createElement("span");
+    span.className = `fmt-badge ${d.cls}`;
+    span.textContent = d.label;
+    span.title = d.title;
+    container.append(span);
+  }
+}
+
+function updateWatchToggle(btn, watchStatus) {
+  const watched = watchStatus === "Watched";
+  btn.classList.toggle("is-watched", watched);
+  btn.textContent = watched ? "✓" : "○";
+  btn.title = watched ? "Watched — click to mark unwatched" : "Mark as watched";
+  btn.setAttribute("aria-label", watched ? "Mark unwatched" : "Mark watched");
 }
 
 function getVisibleTags(movie) {
@@ -1673,6 +1714,10 @@ function syncControls() {
     const isActive = button.dataset.viewOption === appState.view;
     button.classList.toggle("is-active", isActive);
   });
+  if (dom.themeSelectM) dom.themeSelectM.value = appState.theme;
+  if (dom.sortSelectM) dom.sortSelectM.value = appState.sort;
+  if (dom.groupSelectM) dom.groupSelectM.value = appState.group;
+  if (dom.viewSelectM) dom.viewSelectM.value = appState.view;
 }
 
 function openModal(id) {
@@ -2046,6 +2091,45 @@ function bindEvents() {
       const isOpen = dom.sidebar.classList.toggle("sidebar-open");
       dom.sidebarToggle.classList.toggle("is-open", isOpen);
       dom.sidebarToggle.setAttribute("aria-expanded", String(isOpen));
+    });
+  }
+
+  // Collapsible detail blocks
+  document.querySelectorAll(".detail-block").forEach((block) => {
+    const heading = block.querySelector(".detail-block-heading");
+    if (heading) {
+      heading.addEventListener("click", () => block.classList.toggle("is-collapsed"));
+    }
+  });
+
+  // Mobile sidebar view controls
+  if (dom.themeSelectM) {
+    dom.themeSelectM.addEventListener("change", (e) => {
+      appState.theme = e.target.value;
+      dom.themeSelect.value = e.target.value;
+      applyTheme();
+      saveState();
+    });
+  }
+  if (dom.sortSelectM) {
+    dom.sortSelectM.addEventListener("change", (e) => {
+      appState.sort = e.target.value;
+      dom.sortSelect.value = e.target.value;
+      saveState();
+      render();
+    });
+  }
+  if (dom.groupSelectM) {
+    dom.groupSelectM.addEventListener("change", (e) => {
+      appState.group = e.target.value;
+      dom.groupSelect.value = e.target.value;
+      saveState();
+      render();
+    });
+  }
+  if (dom.viewSelectM) {
+    dom.viewSelectM.addEventListener("change", (e) => {
+      setView(e.target.value);
     });
   }
 
