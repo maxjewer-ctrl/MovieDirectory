@@ -887,6 +887,9 @@ function selectMovie(movieId) {
   appState.selectedMovieId = movieId;
   saveState();
   renderDetail();
+  // Update carousel active outline without a full re-render
+  document.querySelectorAll(".carousel-card.carousel-active").forEach((el) => el.classList.remove("carousel-active"));
+  document.querySelectorAll(`.carousel-card[data-movie-id="${movieId}"]`).forEach((el) => el.classList.add("carousel-active"));
   if (window.innerWidth <= 1100 && dom.detailPanel) {
     dom.detailPanel.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -1006,6 +1009,12 @@ function renderCollection(groups) {
     return;
   }
 
+  // On mobile, render format/collection carousels instead of the grid
+  if (window.innerWidth <= 1100) {
+    renderMobileCarousels(groups.flatMap((g) => g.movies));
+    return;
+  }
+
   for (const group of groups) {
     if (!group.movies.length) continue;
     const block = document.createElement("section");
@@ -1028,6 +1037,111 @@ function renderCollection(groups) {
     block.append(list);
     dom.collectionContainer.append(block);
   }
+}
+
+// Predefined mobile carousel categories (a movie can appear in several)
+const MOBILE_CAROUSELS = [
+  { key: "steelbook", label: "Steelbooks", match: (m) => m.steelbook },
+  { key: "criterion", label: "Criterion Collection", match: (m) => m.criterion },
+  { key: "4k", label: "4K UHD", match: (m) => (m.primaryFormat || "").includes("4K") },
+  {
+    key: "animation",
+    label: "Disney / Animation",
+    match: (m) =>
+      m.section === "Animation / Family" ||
+      m.section === "Studio Ghibli" ||
+      (m.tags || []).includes("Studio Ghibli") ||
+      (m.tags || []).includes("Disney"),
+  },
+  { key: "director", label: "Director Collections", match: (m) => Boolean(m.directorCollection) },
+  { key: "marvel", label: "Marvel / Superhero", match: (m) => m.section === "Marvel / Superhero" },
+  { key: "horror", label: "Horror", match: (m) => m.section === "Horror" },
+];
+
+function renderMobileCarousels(movieList) {
+  // Dedupe by id
+  const seen = new Set();
+  const unique = [];
+  for (const m of movieList) {
+    if (!seen.has(m.id)) {
+      seen.add(m.id);
+      unique.push(m);
+    }
+  }
+
+  const sections = [];
+  for (const cat of MOBILE_CAROUSELS) {
+    const matched = unique.filter(cat.match);
+    if (matched.length) sections.push({ label: cat.label, movies: matched });
+  }
+  // Always include a full "All Titles" row so nothing is unreachable
+  sections.push({ label: "All Titles", movies: unique });
+
+  for (const section of sections) {
+    const wrap = document.createElement("section");
+    wrap.className = "carousel-section";
+
+    const head = document.createElement("div");
+    head.className = "carousel-head";
+    head.innerHTML = `<h3>${escapeHtml(section.label)}</h3><span class="carousel-count">${section.movies.length}</span>`;
+    wrap.append(head);
+
+    const track = document.createElement("div");
+    track.className = "carousel-track";
+    for (const movie of section.movies) {
+      track.append(renderCarouselCard(movie));
+    }
+    wrap.append(track);
+    dom.collectionContainer.append(wrap);
+  }
+}
+
+function renderCarouselCard(movie) {
+  const card = document.createElement("div");
+  card.className = "carousel-card";
+  card.dataset.movieId = movie.id;
+  if (movie.id === appState.selectedMovieId) card.classList.add("carousel-active");
+
+  const poster = document.createElement("div");
+  poster.className = "carousel-poster";
+  if (movie.posterUrl) {
+    const img = document.createElement("img");
+    img.src = movie.posterUrl;
+    img.alt = movie.title;
+    poster.append(img);
+  } else {
+    applyPosterStyle(poster, movie.posterPalette);
+    const fallback = document.createElement("div");
+    fallback.className = "carousel-poster-fallback";
+    fallback.textContent = movie.title;
+    poster.append(fallback);
+  }
+
+  const badges = document.createElement("div");
+  badges.className = "carousel-badges";
+  renderFormatBadges(badges, movie);
+  poster.append(badges);
+
+  const watchBtn = document.createElement("button");
+  watchBtn.type = "button";
+  watchBtn.className = "carousel-watch";
+  updateWatchToggle(watchBtn, movie.watchStatus);
+  watchBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const next = movie.watchStatus === "Watched" ? "Unwatched" : "Watched";
+    movie.watchStatus = next;
+    updateWatchToggle(watchBtn, next);
+    saveMovieMetadata(movie.id, { watchStatus: next });
+  });
+  poster.append(watchBtn);
+
+  const title = document.createElement("p");
+  title.className = "carousel-card-title";
+  title.textContent = movie.title;
+
+  card.append(poster, title);
+  card.addEventListener("click", () => selectMovie(movie.id));
+  return card;
 }
 
 function renderListOverview() {
@@ -2094,11 +2208,24 @@ function bindEvents() {
     });
   }
 
-  // Collapsible detail blocks
-  document.querySelectorAll(".detail-block").forEach((block) => {
-    const heading = block.querySelector(".detail-block-heading");
-    if (heading) {
-      heading.addEventListener("click", () => block.classList.toggle("is-collapsed"));
+  // Master details expand/collapse control
+  const detailToggle = document.querySelector("#detail-toggle");
+  const detailEditorial = document.querySelector("#detail-editorial");
+  if (detailToggle && detailEditorial) {
+    detailToggle.addEventListener("click", () => {
+      const collapsed = detailEditorial.classList.toggle("is-collapsed");
+      detailToggle.setAttribute("aria-expanded", String(!collapsed));
+      detailToggle.querySelector(".detail-toggle-label").textContent = collapsed ? "Show details" : "Hide details";
+    });
+  }
+
+  // Re-render when crossing the mobile/desktop breakpoint
+  let lastIsMobile = window.innerWidth <= 1100;
+  window.addEventListener("resize", () => {
+    const isMobile = window.innerWidth <= 1100;
+    if (isMobile !== lastIsMobile) {
+      lastIsMobile = isMobile;
+      render();
     }
   });
 
