@@ -7,11 +7,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=20260705-ui">
+  <link rel="stylesheet" href="./styles.css?v=20260705-mobile-sidebar">
 </head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="brand-block">
         <p class="brand-kicker">Personal Archive</p>
         <h1>Movie Directory</h1>
@@ -53,6 +53,10 @@
 
     <main class="main-stage">
       <header class="topbar">
+        <button id="sidebar-toggle" class="sidebar-toggle-button ghost-button" type="button" aria-expanded="false" aria-controls="sidebar">
+          <span class="sidebar-toggle-icon">☰</span>
+          <span>Filters</span>
+        </button>
         <div class="toolbar-controls">
           <label>
             <span>Theme</span>
@@ -559,8 +563,8 @@
       }
     }
   </script>
-  <script src="./movies-data.js?v=20260705-ui"></script>
-  <script src="./app.js?v=20260705-ui"></script>
+  <script src="./movies-data.js?v=20260705-mobile-sidebar"></script>
+  <script src="./app.js?v=20260705-mobile-sidebar"></script>
   <script type="module" src="./case-viewer.js?v=20260705-interactive6"></script>
 </body>
 </html>

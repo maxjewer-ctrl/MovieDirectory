@@ -122,6 +122,8 @@ const dom = {
   addSpecialFeaturesInput: document.querySelector("#add-special-features-input"),
   cardTemplate: document.querySelector("#movie-card-template"),
   rowTemplate: document.querySelector("#movie-row-template"),
+  sidebarToggle: document.querySelector("#sidebar-toggle"),
+  sidebar: document.querySelector("#sidebar"),
 };
 
 const libraryFilterDefinitions = [
@@ -2039,6 +2041,14 @@ function escapeAttr(text) {
 // --- Event Binding ---
 
 function bindEvents() {
+  if (dom.sidebarToggle) {
+    dom.sidebarToggle.addEventListener("click", () => {
+      const isOpen = dom.sidebar.classList.toggle("sidebar-open");
+      dom.sidebarToggle.classList.toggle("is-open", isOpen);
+      dom.sidebarToggle.setAttribute("aria-expanded", String(isOpen));
+    });
+  }
+
   dom.searchInput.addEventListener("input", (event) => {
     appState.search = event.target.value;
     saveState();
