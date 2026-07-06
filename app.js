@@ -2782,7 +2782,7 @@ function bindEvents() {
     });
   }
 
-  // Collapse / expand the rotating preview hero
+  // Collapse / expand the preview hero
   if (dom.heroCollapse) {
     dom.heroCollapse.addEventListener("click", () => {
       appState.heroCollapsed = !appState.heroCollapsed;
@@ -2790,6 +2790,41 @@ function bindEvents() {
       saveState();
     });
   }
+
+  // Auto-collapse the preview hero once the user starts scrolling down the
+  // carousels (phones only). Scrolling back up leaves it collapsed — tap the
+  // grabber bar to bring the preview back.
+  const compactHeroQuery = window.matchMedia("(max-width: 1100px)");
+  let lastScrollY = window.scrollY;
+  let scrollTicking = false;
+  function handleAutoCollapse() {
+    scrollTicking = false;
+    const y = window.scrollY;
+    const goingDown = y > lastScrollY + 6;
+    lastScrollY = y;
+    if (!compactHeroQuery.matches) return;
+    if (
+      goingDown &&
+      y > 40 &&
+      !appState.heroCollapsed &&
+      dom.detailContent &&
+      !dom.detailContent.hidden
+    ) {
+      appState.heroCollapsed = true;
+      applyHeroCollapsed();
+      saveState();
+    }
+  }
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (!scrollTicking) {
+        scrollTicking = true;
+        requestAnimationFrame(handleAutoCollapse);
+      }
+    },
+    { passive: true }
+  );
 
   // Add to playlist
   if (dom.addPlaylistBtn) {

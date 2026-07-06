@@ -14,6 +14,16 @@ const TILT_SENS = 0.006;    // radians of pitch per pixel dragged
 const MAX_TILT = 0.5;       // clamp on the pitch axis
 const SPIN_DAMPING = 0.94;  // fling decay toward the auto baseline
 const TILT_RECENTER = 0.06; // how fast pitch eases back to level
+const REST_TILT = -0.05;    // subtle resting pitch for the static phone pose
+
+// On phones the case is shown static and front-facing (no idle spin) so the
+// preview reads as a poster rather than a rotating gimmick. Matches the CSS
+// breakpoint that switches the detail panel into the compact mobile layout.
+const compactQuery =
+  typeof window !== "undefined" && window.matchMedia
+    ? window.matchMedia("(max-width: 1100px)")
+    : null;
+const isCompact = () => (compactQuery ? compactQuery.matches : false);
 
 let renderer, scene, camera, model, animFrameId;
 let viewerDiv = null;
@@ -393,6 +403,18 @@ function tick() {
         returningToFront = false;
         velY = AUTO_SPEED;
       }
+    } else if (isCompact()) {
+      // Phone: hold a static, front-facing pose (no idle spin). Ease the cover
+      // back to face front with a subtle resting tilt after any manual drag.
+      const twoPi = Math.PI * 2;
+      const cur = ((model.rotation.y % twoPi) + twoPi) % twoPi;
+      const target = cur > Math.PI ? twoPi : 0;
+      const goal = model.rotation.y - (model.rotation.y % twoPi) + target;
+      const ease = Math.min(1, f * 0.15);
+      model.rotation.y += (goal - model.rotation.y) * ease;
+      model.rotation.x += (REST_TILT - model.rotation.x) * ease;
+      velY = 0;
+      velX = 0;
     } else {
       // Free spin with fling momentum that settles into the gentle auto-rotate.
       model.rotation.y += velY * f;
