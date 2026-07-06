@@ -134,6 +134,7 @@ const dom = {
   viewSelectM: document.querySelector("#view-select-m"),
   addMovieButtonM: document.querySelector("#add-movie-button-m"),
   detailIconRail: document.querySelector("#detail-icon-rail"),
+  detailHeroTitle: document.querySelector("#detail-hero-title"),
 };
 
 const libraryFilterDefinitions = [
@@ -1409,6 +1410,7 @@ function renderDetail() {
   dom.detailContent.hidden = false;
   renderDetailPoster(movie);
   renderDetailIconRail(movie);
+  if (dom.detailHeroTitle) dom.detailHeroTitle.textContent = movie.title;
   dom.detailSection.textContent = movie.subsection || movie.section;
   dom.detailTitle.textContent = movie.title;
   dom.detailSubtitle.textContent = movie.directorCollection
@@ -1638,6 +1640,19 @@ async function loadDetailCaseArt(movie) {
   }
 }
 
+// Small designed trait icons shown in the detail rail (and reused elsewhere)
+function movieTraitIcons(movie) {
+  const icons = [];
+  const fmt = movie.primaryFormat || "";
+  if (fmt.includes("4K")) icons.push({ text: "4K", cls: "tag-4k", label: "4K UHD" });
+  if (fmt.includes("Blu-ray")) icons.push({ text: "BD", cls: "tag-bd", label: "Blu-ray" });
+  if (fmt === "DVD") icons.push({ text: "DVD", cls: "tag-dvd", label: "DVD" });
+  if (movie.criterion) icons.push({ text: "C", cls: "tag-cc", label: "Criterion" });
+  if (movie.steelbook) icons.push({ text: "S", cls: "tag-sb", label: "Steelbook" });
+  if (movie.moviesAnywhere) icons.push({ text: "MA", cls: "tag-ma", label: "Movies Anywhere" });
+  return icons;
+}
+
 function renderDetailIconRail(movie) {
   const rail = dom.detailIconRail;
   if (!rail) return;
@@ -1657,15 +1672,14 @@ function renderDetailIconRail(movie) {
     renderDetailIconRail(movie);
   });
 
-  // Watched toggle
+  // Watched toggle (icon only — no status text)
   const watch = document.createElement("button");
   watch.type = "button";
   watch.className = "rail-icon";
   const watched = movie.watchStatus === "Watched";
   watch.classList.toggle("is-watched", watched);
   watch.textContent = watched ? "✓" : "○";
-  watch.title = watched ? "Watched" : "Mark watched";
-  watch.setAttribute("aria-label", watch.title);
+  watch.setAttribute("aria-label", watched ? "Watched" : "Mark watched");
   watch.addEventListener("click", () => {
     const next = watched ? "Unwatched" : "Watched";
     movie.watchStatus = next;
@@ -1673,22 +1687,17 @@ function renderDetailIconRail(movie) {
     renderDetailIconRail(getMovieById(movie.id) || movie);
   });
 
-  // Details expand/collapse
-  const info = document.createElement("button");
-  info.type = "button";
-  info.className = "rail-icon";
-  info.textContent = "ⓘ";
-  info.title = "Details";
-  info.setAttribute("aria-label", "Toggle details");
-  const editorial = document.querySelector("#detail-editorial");
-  info.classList.toggle("is-active", editorial && !editorial.classList.contains("is-collapsed"));
-  info.addEventListener("click", () => {
-    if (!editorial) return;
-    const collapsed = editorial.classList.toggle("is-collapsed");
-    info.classList.toggle("is-active", !collapsed);
-  });
+  rail.append(fav, watch);
 
-  rail.append(fav, watch, info);
+  // Trait icons under the favorite / watched boxes
+  for (const icon of movieTraitIcons(movie)) {
+    const chip = document.createElement("span");
+    chip.className = `rail-tag ${icon.cls}`;
+    chip.textContent = icon.text;
+    chip.title = icon.label;
+    chip.setAttribute("aria-label", icon.label);
+    rail.append(chip);
+  }
 }
 
 function renderDetailPoster(movie) {
