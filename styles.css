@@ -2035,10 +2035,16 @@ select:focus-visible,
   }
 
   /* Static, front-facing case on phones — no idle rotation. (CSS fallback for
-     when the WebGL viewer isn't active; the WebGL path is frozen in JS.) */
+     when the WebGL viewer isn't active; the WebGL path is frozen in JS.)
+     Double-tapping the cover flips it to show the back. */
   .detail-content .detail-case-object {
     animation: none !important;
     transform: rotateX(4deg) rotateY(-12deg) !important;
+    transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .detail-content .detail-case-object.is-flipped {
+    transform: rotateX(4deg) rotateY(168deg) !important;
   }
 
   /* Collapse / expand handle — a full-width grabber bar along the bottom edge

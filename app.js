@@ -148,6 +148,7 @@ const dom = {
   heroCollapse: document.querySelector("#hero-collapse"),
   fullDescBtn: document.querySelector("#full-desc-btn"),
   addPlaylistBtn: document.querySelector("#add-playlist-btn"),
+  changeCoverBtn: document.querySelector("#change-cover-btn"),
   playlistModal: document.querySelector("#playlist-modal"),
   playlistPicker: document.querySelector("#playlist-picker"),
   playlistNewBtn: document.querySelector("#playlist-new-btn"),
@@ -1944,13 +1945,11 @@ function renderDetailPoster(movie) {
   `;
   wrapper.append(caseNode);
 
-  if (movie.tmdbId && apiConfig.hasTmdbKey) {
-    const browseBtn = document.createElement("button");
-    browseBtn.type = "button";
-    browseBtn.className = "poster-browse-button";
-    browseBtn.textContent = "Browse Covers";
-    browseBtn.addEventListener("click", () => openPosterCarousel(movie));
-    wrapper.append(browseBtn);
+  // The cover picker is reachable from the "Change cover" button in the hero
+  // action row (discoverable on mobile), enabled when alternate covers can be
+  // fetched for this title.
+  if (dom.changeCoverBtn) {
+    dom.changeCoverBtn.hidden = !(movie.tmdbId && apiConfig.hasTmdbKey);
   }
 
   dom.detailPoster.append(wrapper);
@@ -2832,6 +2831,48 @@ function bindEvents() {
   }
   if (dom.playlistNewBtn) {
     dom.playlistNewBtn.addEventListener("click", () => openModal("list-modal"));
+  }
+
+  // Change cover art — opens the alternate-cover picker for the selection.
+  if (dom.changeCoverBtn) {
+    dom.changeCoverBtn.addEventListener("click", () => {
+      const movie = getMovieById(appState.selectedMovieId);
+      if (movie) openPosterCarousel(movie);
+    });
+  }
+
+  // Double-tap / double-click the cover to flip it and show the back. The
+  // WebGL viewer handles its own flip; this covers the CSS-case fallback that
+  // renders when the 3D viewer isn't active.
+  if (dom.detailPoster) {
+    let lastPosterTap = 0;
+    let posterDownX = 0;
+    let posterDownY = 0;
+    let posterMoved = false;
+    dom.detailPoster.addEventListener("pointerdown", (e) => {
+      posterDownX = e.clientX;
+      posterDownY = e.clientY;
+      posterMoved = false;
+    });
+    dom.detailPoster.addEventListener("pointermove", (e) => {
+      if (!posterMoved && Math.hypot(e.clientX - posterDownX, e.clientY - posterDownY) > 8) {
+        posterMoved = true;
+      }
+    });
+    dom.detailPoster.addEventListener("pointerup", () => {
+      if (posterMoved) return;
+      // The 3D viewer owns the flip when its canvas is present.
+      if (dom.detailPoster.querySelector(".case-viewer-canvas")) return;
+      const caseObj = dom.detailPoster.querySelector(".detail-case-object");
+      if (!caseObj) return;
+      const now = performance.now();
+      if (now - lastPosterTap < 320) {
+        lastPosterTap = 0;
+        caseObj.classList.toggle("is-flipped");
+      } else {
+        lastPosterTap = now;
+      }
+    });
   }
 
   // Full description / film essay

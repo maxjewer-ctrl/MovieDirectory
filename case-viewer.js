@@ -15,6 +15,8 @@ const MAX_TILT = 0.5;       // clamp on the pitch axis
 const SPIN_DAMPING = 0.94;  // fling decay toward the auto baseline
 const TILT_RECENTER = 0.06; // how fast pitch eases back to level
 const REST_TILT = -0.05;    // subtle resting pitch for the static phone pose
+const TAP_MOVE = 8;         // px of travel under which a pointer counts as a tap
+const DOUBLE_MS = 320;      // max gap between taps to register a double-tap
 
 // On phones the case is shown static and front-facing (no idle spin) so the
 // preview reads as a poster rather than a rotating gimmick. Matches the CSS
@@ -31,6 +33,7 @@ let canvasEl = null;
 let currentMovie = null;
 let pendingMovie = null;
 let returningToFront = false;
+let flipped = false;        // showing the back cover (toggled by double-tap)
 let isVisible = true;
 let running = false;
 
@@ -38,6 +41,9 @@ let running = false;
 let dragging = false;
 let pointerId = null;
 let lastX = 0, lastY = 0;
+let downX = 0, downY = 0;   // pointer-down position (for tap detection)
+let movedFar = false;       // whether this pointer session moved beyond a tap
+let lastTapTime = 0;        // timestamp of the previous tap (double-tap detect)
 let velY = AUTO_SPEED;  // yaw velocity (carries fling momentum)
 let velX = 0;           // pitch velocity
 
@@ -47,6 +53,19 @@ const textureCache = new Map();
 
 function clamp(v, lo, hi) {
   return v < lo ? lo : v > hi ? hi : v;
+}
+
+// Ease the case toward a resting yaw (0 = front, π = back) along the shortest
+// path, and toward a target pitch. Returns true once it has settled.
+function easeToRestYaw(targetYaw, targetTilt, ease) {
+  const twoPi = Math.PI * 2;
+  const cur = ((model.rotation.y % twoPi) + twoPi) % twoPi;
+  let diff = targetYaw - cur;
+  if (diff > Math.PI) diff -= twoPi;
+  if (diff < -Math.PI) diff += twoPi;
+  model.rotation.y += diff * ease;
+  model.rotation.x += (targetTilt - model.rotation.x) * ease;
+  return Math.abs(diff) < 0.01 && Math.abs(model.rotation.x - targetTilt) < 0.01;
 }
 
 function makeSpineTexture(title, year) {
@@ -250,6 +269,7 @@ function applyMovieTextures(movie) {
 
 function updateMovie(movie) {
   currentMovie = movie;
+  flipped = false;
   if (!dragging) returningToFront = true;
   if (model) {
     applyMovieTextures(movie);
@@ -267,11 +287,22 @@ function onPointerDown(e) {
   pointerId = e.pointerId;
   lastX = e.clientX;
   lastY = e.clientY;
+  downX = e.clientX;
+  downY = e.clientY;
+  movedFar = false;
   velY = 0;
   velX = 0;
   canvasEl.setPointerCapture?.(pointerId);
   startLoop();
   e.preventDefault();
+}
+
+function toggleFlip() {
+  flipped = !flipped;
+  returningToFront = false;
+  velY = 0;
+  velX = 0;
+  startLoop();
 }
 
 function onPointerMove(e) {
@@ -286,6 +317,11 @@ function onPointerMove(e) {
   model.rotation.y += -dx * DRAG_SENS;
   model.rotation.x = clamp(model.rotation.x - dy * TILT_SENS, -MAX_TILT, MAX_TILT);
 
+  // Track total travel so a small, near-stationary press still reads as a tap.
+  if (!movedFar && Math.hypot(e.clientX - downX, e.clientY - downY) > TAP_MOVE) {
+    movedFar = true;
+  }
+
   // Remember the last movement as the fling velocity for release.
   velY = -dx * DRAG_SENS;
   velX = -dy * TILT_SENS;
@@ -296,6 +332,18 @@ function endDrag(e) {
   dragging = false;
   if (pointerId !== null) canvasEl.releasePointerCapture?.(pointerId);
   pointerId = null;
+
+  // A near-stationary press is a tap; two taps in quick succession flip the
+  // case between its front and back cover.
+  if (e && e.type === "pointerup" && !movedFar) {
+    const now = performance.now();
+    if (now - lastTapTime < DOUBLE_MS) {
+      lastTapTime = 0;
+      toggleFlip();
+    } else {
+      lastTapTime = now;
+    }
+  }
 }
 
 /* -------------------------------- viewer --------------------------------- */
@@ -390,29 +438,17 @@ function tick() {
       // Direct manipulation handled in onPointerMove; nothing to integrate.
     } else if (returningToFront) {
       // Swing the cover back to face front and level out the tilt.
-      const twoPi = Math.PI * 2;
-      const cur = ((model.rotation.y % twoPi) + twoPi) % twoPi;
-      const target = cur > Math.PI ? twoPi : 0;
-      const goal = model.rotation.y - (model.rotation.y % twoPi) + target;
-      const ease = Math.min(1, f * 0.1);
-      model.rotation.y += (goal - model.rotation.y) * ease;
-      model.rotation.x += (0 - model.rotation.x) * ease;
-      if (Math.abs(goal - model.rotation.y) < 0.01 && Math.abs(model.rotation.x) < 0.01) {
-        model.rotation.y = 0;
-        model.rotation.x = 0;
+      if (easeToRestYaw(0, 0, Math.min(1, f * 0.1))) {
         returningToFront = false;
         velY = AUTO_SPEED;
       }
-    } else if (isCompact()) {
-      // Phone: hold a static, front-facing pose (no idle spin). Ease the cover
-      // back to face front with a subtle resting tilt after any manual drag.
-      const twoPi = Math.PI * 2;
-      const cur = ((model.rotation.y % twoPi) + twoPi) % twoPi;
-      const target = cur > Math.PI ? twoPi : 0;
-      const goal = model.rotation.y - (model.rotation.y % twoPi) + target;
-      const ease = Math.min(1, f * 0.15);
-      model.rotation.y += (goal - model.rotation.y) * ease;
-      model.rotation.x += (REST_TILT - model.rotation.x) * ease;
+    } else if (isCompact() || flipped) {
+      // Static hold: front by default, back cover when flipped. On phones this
+      // is the resting state (no idle spin); on desktop we only enter it while
+      // flipped, then resume the idle spin once flipped back to front.
+      const restYaw = flipped ? Math.PI : 0;
+      const restTilt = isCompact() ? REST_TILT : 0;
+      easeToRestYaw(restYaw, restTilt, Math.min(1, f * 0.15));
       velY = 0;
       velX = 0;
     } else {
