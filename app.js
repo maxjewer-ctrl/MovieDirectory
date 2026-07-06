@@ -1,10 +1,19 @@
 const STORAGE_KEY = "movie-directory-state-v6";
-const DEFAULT_LISTS = [
-  { id: "list-friday-night-picks", name: "Friday Night Picks", movieIds: [] },
-  { id: "list-criterion-queue", name: "Criterion Queue", movieIds: [] },
-  { id: "list-family-watch", name: "Family Watch", movieIds: [] },
-  { id: "list-halloween", name: "Halloween", movieIds: [] },
+const WATCHLISTS = [
+  { id: "list-max-watchlist", name: "Max's Watchlist" },
+  { id: "list-kate-watchlist", name: "Kate's Watchlist" },
 ];
+const DEFAULT_LISTS = WATCHLISTS.map((l) => ({ id: l.id, name: l.name, movieIds: [] }));
+
+// Ensure the two named watchlists always exist (adds them for returning users
+// whose saved state predates them).
+function ensureWatchlists() {
+  for (const wl of WATCHLISTS) {
+    if (!appState.lists.some((l) => l.id === wl.id)) {
+      appState.lists.push({ id: wl.id, name: wl.name, movieIds: [] });
+    }
+  }
+}
 
 const SPECIAL_FEATURE_PRESETS = [
   "Audio Commentary",
@@ -138,6 +147,10 @@ const dom = {
   detailHeroTitle: document.querySelector("#detail-hero-title"),
   heroCollapse: document.querySelector("#hero-collapse"),
   fullDescBtn: document.querySelector("#full-desc-btn"),
+  addPlaylistBtn: document.querySelector("#add-playlist-btn"),
+  playlistModal: document.querySelector("#playlist-modal"),
+  playlistPicker: document.querySelector("#playlist-picker"),
+  playlistNewBtn: document.querySelector("#playlist-new-btn"),
   essayModal: document.querySelector("#essay-modal"),
   essayModalTitle: document.querySelector("#essay-modal-title"),
   essayBody: document.querySelector("#essay-body"),
@@ -884,6 +897,10 @@ function createList(name) {
   saveState();
   closeModal("list-modal");
   render();
+  // If the playlist picker is open, refresh it to show the new playlist
+  if (dom.playlistModal && !dom.playlistModal.hidden) {
+    renderPlaylistPicker(appState.selectedMovieId);
+  }
 }
 
 function setActiveFilter(type, value = null) {
@@ -1233,13 +1250,27 @@ function renderMobileCarousels(movieList) {
   const pool = [...sections, ...dirSections, ...studioSections, ...guideSections];
   pool.sort((a, b) => carouselRank(a.label) - carouselRank(b.label));
 
+  // Personal playlist carousels (non-empty) — pinned near the top
+  const playlistSections = appState.lists
+    .map((list) => ({
+      label: list.name,
+      isPlaylist: true,
+      filter: { type: "list", value: list.id },
+      movies: list.movieIds.map((id) => getMovieById(id)).filter(Boolean),
+    }))
+    .filter((s) => s.movies.length);
+
   const ordered = [...pool];
+  ordered.unshift(...playlistSections);
+
+  // Guarantee "All Movies A-Z" sits within the top 3 rows every reload.
   const azSection = {
     label: "All Movies A-Z",
     seeAll: true,
     movies: [...unique].sort((a, b) => a.sortTitle.localeCompare(b.sortTitle)),
   };
-  ordered.splice(Math.min(4, ordered.length), 0, azSection);
+  const azPos = Math.floor(carouselRank("__all-az__") * 3); // 0, 1, or 2 (stable per load)
+  ordered.splice(Math.min(azPos, ordered.length), 0, azSection);
   ordered.push(...formatSections);
 
   for (const section of ordered) renderCarouselSection(section);
@@ -1256,7 +1287,7 @@ function carouselRank(label) {
 
 function renderCarouselSection(section) {
   const wrap = document.createElement("section");
-  wrap.className = "carousel-section";
+  wrap.className = section.isPlaylist ? "carousel-section carousel-playlist" : "carousel-section";
 
   const head = document.createElement("div");
   head.className = "carousel-head";
@@ -2156,6 +2187,42 @@ function focusDetailPanel() {
   document.querySelector(".detail-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
+/* -------------------- Add to playlist -------------------- */
+
+function openPlaylistModal() {
+  const movie = getMovieById(appState.selectedMovieId);
+  if (!movie) return;
+  renderPlaylistPicker(movie.id);
+  openModal("playlist-modal");
+}
+
+function renderPlaylistPicker(movieId) {
+  const picker = dom.playlistPicker;
+  if (!picker) return;
+  picker.innerHTML = "";
+  if (!appState.lists.length) {
+    picker.innerHTML = '<p class="muted-text">No playlists yet. Create one below.</p>';
+    return;
+  }
+  for (const list of appState.lists) {
+    const inList = list.movieIds.includes(movieId);
+    const row = document.createElement("div");
+    row.className = "playlist-row";
+    row.innerHTML = `
+      <div class="playlist-row-info">
+        <h4>${escapeHtml(list.name)}</h4>
+        <p>${list.movieIds.length} ${list.movieIds.length === 1 ? "film" : "films"}</p>
+      </div>
+      <button class="list-toggle${inList ? " is-on" : ""}" type="button">${inList ? "✓ Added" : "Add"}</button>
+    `;
+    row.querySelector(".list-toggle").addEventListener("click", async () => {
+      await toggleMovieInList(list.id, movieId);
+      renderPlaylistPicker(movieId);
+    });
+    picker.append(row);
+  }
+}
+
 /* -------------------- Full description / film essay -------------------- */
 
 const essayState = { movieId: null, altIndex: 0 };
@@ -2724,6 +2791,14 @@ function bindEvents() {
     });
   }
 
+  // Add to playlist
+  if (dom.addPlaylistBtn) {
+    dom.addPlaylistBtn.addEventListener("click", openPlaylistModal);
+  }
+  if (dom.playlistNewBtn) {
+    dom.playlistNewBtn.addEventListener("click", () => openModal("list-modal"));
+  }
+
   // Full description / film essay
   if (dom.fullDescBtn) {
     dom.fullDescBtn.addEventListener("click", openEssayModal);
@@ -2995,6 +3070,7 @@ async function init() {
   const [rawMovies] = await Promise.all([loadCatalogFromSource(), loadApiConfig()]);
   setMovies(rawMovies);
   loadState();
+  ensureWatchlists();
   applyTheme();
   ensureSelectedMovie();
   bindEvents();
