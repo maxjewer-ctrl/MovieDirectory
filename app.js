@@ -38,6 +38,7 @@ const appState = {
   saveStatus: { text: "Live from catalog", tone: "idle" },
   addMovieTab: "manual",
   pendingSpecialFeatures: [],
+  mobileAllView: false,
 };
 
 let movies = [];
@@ -131,6 +132,8 @@ const dom = {
   sortSelectM: document.querySelector("#sort-select-m"),
   groupSelectM: document.querySelector("#group-select-m"),
   viewSelectM: document.querySelector("#view-select-m"),
+  addMovieButtonM: document.querySelector("#add-movie-button-m"),
+  detailIconRail: document.querySelector("#detail-icon-rail"),
 };
 
 const libraryFilterDefinitions = [
@@ -1038,22 +1041,44 @@ function renderCollection(groups) {
 }
 
 // Predefined mobile carousel categories (a movie can appear in several)
-const MOBILE_CAROUSELS = [
-  { key: "steelbook", label: "Steelbooks", match: (m) => m.steelbook },
-  { key: "criterion", label: "Criterion Collection", match: (m) => m.criterion },
-  { key: "4k", label: "4K UHD", match: (m) => (m.primaryFormat || "").includes("4K") },
-  {
-    key: "animation",
-    label: "Disney / Animation",
-    match: (m) =>
-      m.section === "Animation / Family" ||
-      m.section === "Studio Ghibli" ||
-      (m.tags || []).includes("Studio Ghibli") ||
-      (m.tags || []).includes("Disney"),
-  },
-  { key: "director", label: "Director Collections", match: (m) => Boolean(m.directorCollection) },
-  { key: "marvel", label: "Marvel / Superhero", match: (m) => m.section === "Marvel / Superhero" },
-  { key: "horror", label: "Horror", match: (m) => m.section === "Horror" },
+// Japanese classic auteurs (live-action + notable animation directors)
+const JAPANESE_DIRECTORS = [
+  "Akira Kurosawa", "Yasujiro Ozu", "Kenji Mizoguchi", "Masaki Kobayashi",
+  "Hayao Miyazaki", "Isao Takahata", "Katsuhiro Otomo", "Mamoru Oshii",
+  "Satoshi Kon", "Takashi Miike", "Takeshi Kitano", "Hirokazu Kore-eda",
+  "Seijun Suzuki", "Nobuhiko Obayashi", "Kaneto Shindo", "Hideo Nakata",
+  "Kon Ichikawa", "Shohei Imamura", "Mikio Naruse",
+];
+
+const genreSet = (m) => new Set(getMovieGenres(m));
+
+// Thematic categories, in display order (most engaging first). A movie can
+// appear in several.
+const CAROUSEL_CATEGORIES = [
+  { label: "Romantic Comedies", match: (m, g) => g.has("Romance") && g.has("Comedy") },
+  { label: "Japanese Classics", match: (m) => JAPANESE_DIRECTORS.includes(m.director || "") || m.section === "Studio Ghibli" },
+  { label: "Sci-Fi & Fantasy", match: (m, g) => g.has("Science Fiction") || g.has("Fantasy") },
+  { label: "Action & Adventure", match: (m, g) => g.has("Action") || g.has("Adventure") },
+  { label: "Crime & Thrillers", match: (m, g) => g.has("Crime") || g.has("Thriller") || g.has("Mystery") },
+  { label: "Horror", match: (m, g) => g.has("Horror") },
+  { label: "Dramas", match: (m, g) => g.has("Drama") },
+  { label: "Comedies", match: (m, g) => g.has("Comedy") },
+  { label: "Animation & Family", match: (m, g) => g.has("Animation") || g.has("Family") },
+  { label: "Documentaries", match: (m, g) => g.has("Documentary") },
+  { label: "Westerns", match: (m, g) => g.has("Western") },
+];
+
+// Studio / collection categories (after thematic + director collections)
+const STUDIO_CATEGORIES = [
+  { label: "Criterion Collection", match: (m) => m.criterion },
+  { label: "Studio Ghibli", match: (m) => m.section === "Studio Ghibli" },
+  { label: "Marvel / Superhero", match: (m) => m.section === "Marvel / Superhero" },
+];
+
+// Format categories — lowest priority (Steelbooks lives way down here)
+const FORMAT_CATEGORIES = [
+  { label: "4K UHD", match: (m) => (m.primaryFormat || "").includes("4K") },
+  { label: "Steelbooks", match: (m) => m.steelbook },
 ];
 
 function renderMobileCarousels(movieList) {
@@ -1067,31 +1092,107 @@ function renderMobileCarousels(movieList) {
     }
   }
 
+  // Full-page A-Z grid (reached via a carousel's "See all")
+  if (appState.mobileAllView) {
+    renderAllMoviesGrid(unique);
+    return;
+  }
+
+  const MIN_THEME = 4; // min titles to justify a thematic carousel
   const sections = [];
-  for (const cat of MOBILE_CAROUSELS) {
+
+  for (const cat of CAROUSEL_CATEGORIES) {
+    const matched = unique.filter((m) => cat.match(m, genreSet(m)));
+    if (matched.length >= MIN_THEME) sections.push({ label: cat.label, movies: matched });
+  }
+
+  // Director collections — one carousel each, largest first
+  const collMap = new Map();
+  for (const m of unique) {
+    if (!m.directorCollection) continue;
+    if (!collMap.has(m.directorCollection)) collMap.set(m.directorCollection, []);
+    collMap.get(m.directorCollection).push(m);
+  }
+  const dirSections = [...collMap.entries()]
+    .filter(([, list]) => list.length >= 2)
+    .sort((a, b) => b[1].length - a[1].length)
+    .map(([label, list]) => ({ label: `${label} Collection`, movies: list }));
+
+  const studioSections = [];
+  for (const cat of STUDIO_CATEGORIES) {
     const matched = unique.filter(cat.match);
-    if (matched.length) sections.push({ label: cat.label, movies: matched });
+    if (matched.length >= 2) studioSections.push({ label: cat.label, movies: matched });
   }
-  // Always include a full "All Titles" row so nothing is unreachable
-  sections.push({ label: "All Titles", movies: unique });
 
-  for (const section of sections) {
-    const wrap = document.createElement("section");
-    wrap.className = "carousel-section";
-
-    const head = document.createElement("div");
-    head.className = "carousel-head";
-    head.innerHTML = `<h3>${escapeHtml(section.label)}</h3><span class="carousel-count">${section.movies.length}</span>`;
-    wrap.append(head);
-
-    const track = document.createElement("div");
-    track.className = "carousel-track";
-    for (const movie of section.movies) {
-      track.append(renderCarouselCard(movie));
-    }
-    wrap.append(track);
-    dom.collectionContainer.append(wrap);
+  const formatSections = [];
+  for (const cat of FORMAT_CATEGORIES) {
+    const matched = unique.filter(cat.match);
+    if (matched.length >= 2) formatSections.push({ label: cat.label, movies: matched });
   }
+
+  // Order: thematic → director collections → studios, with the "All Movies
+  // A-Z" carousel injected a few rows down, then formats (Steelbooks) at the
+  // very bottom.
+  const ordered = [...sections, ...dirSections, ...studioSections];
+  const azSection = {
+    label: "All Movies A-Z",
+    seeAll: true,
+    movies: [...unique].sort((a, b) => a.sortTitle.localeCompare(b.sortTitle)),
+  };
+  ordered.splice(Math.min(4, ordered.length), 0, azSection);
+  ordered.push(...formatSections);
+
+  for (const section of ordered) renderCarouselSection(section);
+}
+
+function renderCarouselSection(section) {
+  const wrap = document.createElement("section");
+  wrap.className = "carousel-section";
+
+  const head = document.createElement("div");
+  head.className = "carousel-head";
+  const trailing = section.seeAll
+    ? '<button class="carousel-see-all" type="button">See all →</button>'
+    : `<span class="carousel-count">${section.movies.length}</span>`;
+  head.innerHTML = `<h3>${escapeHtml(section.label)}</h3>${trailing}`;
+  wrap.append(head);
+
+  if (section.seeAll) {
+    head.querySelector(".carousel-see-all").addEventListener("click", () => {
+      appState.mobileAllView = true;
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+  const track = document.createElement("div");
+  track.className = "carousel-track";
+  for (const movie of section.movies) track.append(renderCarouselCard(movie));
+  wrap.append(track);
+  dom.collectionContainer.append(wrap);
+}
+
+function renderAllMoviesGrid(list) {
+  const byTitle = [...list].sort((a, b) => a.sortTitle.localeCompare(b.sortTitle));
+
+  const header = document.createElement("div");
+  header.className = "all-grid-header";
+  header.innerHTML = `
+    <button class="all-grid-back" type="button">← Back</button>
+    <h3>All Movies A-Z</h3>
+    <span class="carousel-count">${byTitle.length}</span>
+  `;
+  header.querySelector(".all-grid-back").addEventListener("click", () => {
+    appState.mobileAllView = false;
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  dom.collectionContainer.append(header);
+
+  const grid = document.createElement("div");
+  grid.className = "all-grid";
+  for (const movie of byTitle) grid.append(renderCarouselCard(movie));
+  dom.collectionContainer.append(grid);
 }
 
 function renderCarouselCard(movie) {
@@ -1307,6 +1408,7 @@ function renderDetail() {
   dom.detailEmpty.hidden = true;
   dom.detailContent.hidden = false;
   renderDetailPoster(movie);
+  renderDetailIconRail(movie);
   dom.detailSection.textContent = movie.subsection || movie.section;
   dom.detailTitle.textContent = movie.title;
   dom.detailSubtitle.textContent = movie.directorCollection
@@ -1534,6 +1636,59 @@ async function loadDetailCaseArt(movie) {
   if (appState.selectedMovieId === movie.id) {
     renderDetailPoster(getMovieById(movie.id));
   }
+}
+
+function renderDetailIconRail(movie) {
+  const rail = dom.detailIconRail;
+  if (!rail) return;
+  rail.innerHTML = "";
+
+  // Favorite
+  const fav = document.createElement("button");
+  fav.type = "button";
+  fav.className = "rail-icon";
+  const isFav = appState.favorites.has(movie.id);
+  fav.classList.toggle("is-active", isFav);
+  fav.textContent = isFav ? "★" : "☆";
+  fav.title = isFav ? "Remove favorite" : "Add favorite";
+  fav.setAttribute("aria-label", fav.title);
+  fav.addEventListener("click", () => {
+    toggleFavorite(movie.id);
+    renderDetailIconRail(movie);
+  });
+
+  // Watched toggle
+  const watch = document.createElement("button");
+  watch.type = "button";
+  watch.className = "rail-icon";
+  const watched = movie.watchStatus === "Watched";
+  watch.classList.toggle("is-watched", watched);
+  watch.textContent = watched ? "✓" : "○";
+  watch.title = watched ? "Watched" : "Mark watched";
+  watch.setAttribute("aria-label", watch.title);
+  watch.addEventListener("click", () => {
+    const next = watched ? "Unwatched" : "Watched";
+    movie.watchStatus = next;
+    saveMovieMetadata(movie.id, { watchStatus: next });
+    renderDetailIconRail(getMovieById(movie.id) || movie);
+  });
+
+  // Details expand/collapse
+  const info = document.createElement("button");
+  info.type = "button";
+  info.className = "rail-icon";
+  info.textContent = "ⓘ";
+  info.title = "Details";
+  info.setAttribute("aria-label", "Toggle details");
+  const editorial = document.querySelector("#detail-editorial");
+  info.classList.toggle("is-active", editorial && !editorial.classList.contains("is-collapsed"));
+  info.addEventListener("click", () => {
+    if (!editorial) return;
+    const collapsed = editorial.classList.toggle("is-collapsed");
+    info.classList.toggle("is-active", !collapsed);
+  });
+
+  rail.append(fav, watch, info);
 }
 
 function renderDetailPoster(movie) {
@@ -2282,6 +2437,12 @@ function bindEvents() {
   if (dom.viewSelectM) {
     dom.viewSelectM.addEventListener("change", (e) => {
       setView(e.target.value);
+    });
+  }
+  if (dom.addMovieButtonM) {
+    dom.addMovieButtonM.addEventListener("click", () => {
+      closeSidebar();
+      openAddMovieModal();
     });
   }
 
