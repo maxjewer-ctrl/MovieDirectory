@@ -1766,6 +1766,11 @@ select:focus-visible,
   display: none;
 }
 
+/* Collapse/expand control for the preview — hidden on desktop */
+.hero-collapse {
+  display: none;
+}
+
 @media (max-width: 1100px) {
   .app-shell {
     display: flex;
@@ -1910,6 +1915,7 @@ select:focus-visible,
 
   /* White hero card: icon rail (left) spanning title + smaller case (right) */
   .detail-content {
+    position: relative;
     display: grid;
     grid-template-columns: 40px 1fr;
     gap: 8px 10px;
@@ -1918,6 +1924,44 @@ select:focus-visible,
     border-radius: 18px;
     padding: 12px;
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+  }
+
+  /* Collapse / expand chevron in the hero card */
+  .hero-collapse {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 9px;
+    background: rgba(0, 0, 0, 0.05);
+    color: #1f2937;
+    font-size: 0.72rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  /* Collapsed hero: hide the case + rail, leaving just the title bar */
+  .detail-content.hero-collapsed {
+    grid-template-columns: 1fr;
+    padding: 10px 44px 10px 14px;
+  }
+
+  .detail-content.hero-collapsed .detail-icon-rail,
+  .detail-content.hero-collapsed .detail-poster {
+    display: none;
+  }
+
+  .detail-content.hero-collapsed .detail-hero-title {
+    grid-column: 1;
+    grid-row: 1;
+    font-size: 1.25rem;
   }
 
   .detail-icon-rail {

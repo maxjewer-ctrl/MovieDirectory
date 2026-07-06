@@ -39,6 +39,7 @@ const appState = {
   addMovieTab: "manual",
   pendingSpecialFeatures: [],
   mobileAllView: false,
+  heroCollapsed: false,
 };
 
 let movies = [];
@@ -135,6 +136,7 @@ const dom = {
   addMovieButtonM: document.querySelector("#add-movie-button-m"),
   detailIconRail: document.querySelector("#detail-icon-rail"),
   detailHeroTitle: document.querySelector("#detail-hero-title"),
+  heroCollapse: document.querySelector("#hero-collapse"),
 };
 
 const libraryFilterDefinitions = [
@@ -542,6 +544,7 @@ function loadState() {
     appState.activeFilter = migrateActiveFilter(parsed.activeFilter, parsed.activeQuickFilter);
     appState.activeQuickFilter = parsed.activeQuickFilter || "all";
     appState.selectedMovieId = parsed.selectedMovieId || null;
+    appState.heroCollapsed = Boolean(parsed.heroCollapsed);
     appState.favorites = new Set(parsed.favorites || [...buildSeedFavorites()]);
     const storedLists = Array.isArray(parsed.lists) && parsed.lists.length
       ? parsed.lists
@@ -573,6 +576,7 @@ function saveState() {
     activeFilter: appState.activeFilter,
     activeQuickFilter: appState.activeQuickFilter,
     selectedMovieId: appState.selectedMovieId,
+    heroCollapsed: appState.heroCollapsed,
     favorites: [...appState.favorites],
     lists: appState.lists,
   };
@@ -1286,7 +1290,10 @@ function renderCarouselSection(section) {
 
   const track = document.createElement("div");
   track.className = "carousel-track";
-  for (const movie of section.movies) track.append(renderCarouselCard(movie));
+  // Cap cards per carousel to keep the DOM light (thousands of posters froze
+  // the page). Full lists remain reachable via "All Movies A-Z → See all".
+  const CAROUSEL_CAP = 24;
+  for (const movie of section.movies.slice(0, CAROUSEL_CAP)) track.append(renderCarouselCard(movie));
   wrap.append(track);
   dom.collectionContainer.append(wrap);
 }
@@ -1324,6 +1331,8 @@ function renderCarouselCard(movie) {
   poster.className = "carousel-poster";
   if (movie.posterUrl) {
     const img = document.createElement("img");
+    img.loading = "lazy";
+    img.decoding = "async";
     img.src = movie.posterUrl;
     img.alt = movie.title;
     poster.append(img);
@@ -1528,6 +1537,7 @@ function renderDetail() {
   dom.detailContent.hidden = false;
   renderDetailPoster(movie);
   renderDetailIconRail(movie);
+  applyHeroCollapsed();
   if (dom.detailHeroTitle) dom.detailHeroTitle.textContent = movie.title;
   dom.detailSection.textContent = movie.subsection || movie.section;
   dom.detailTitle.textContent = movie.title;
@@ -1769,6 +1779,17 @@ function movieTraitIcons(movie) {
   if (movie.steelbook) icons.push({ text: "S", cls: "tag-sb", label: "Steelbook" });
   if (movie.moviesAnywhere) icons.push({ text: "MA", cls: "tag-ma", label: "Movies Anywhere" });
   return icons;
+}
+
+function applyHeroCollapsed() {
+  if (!dom.detailContent) return;
+  const collapsed = Boolean(appState.heroCollapsed);
+  dom.detailContent.classList.toggle("hero-collapsed", collapsed);
+  if (dom.heroCollapse) {
+    dom.heroCollapse.textContent = collapsed ? "▼" : "▲";
+    dom.heroCollapse.setAttribute("aria-expanded", String(!collapsed));
+    dom.heroCollapse.setAttribute("aria-label", collapsed ? "Expand preview" : "Collapse preview");
+  }
 }
 
 function renderDetailIconRail(movie) {
@@ -2523,6 +2544,15 @@ function bindEvents() {
       const collapsed = detailEditorial.classList.toggle("is-collapsed");
       detailToggle.setAttribute("aria-expanded", String(!collapsed));
       detailToggle.querySelector(".detail-toggle-label").textContent = collapsed ? "Show details" : "Hide details";
+    });
+  }
+
+  // Collapse / expand the rotating preview hero
+  if (dom.heroCollapse) {
+    dom.heroCollapse.addEventListener("click", () => {
+      appState.heroCollapsed = !appState.heroCollapsed;
+      applyHeroCollapsed();
+      saveState();
     });
   }
 
