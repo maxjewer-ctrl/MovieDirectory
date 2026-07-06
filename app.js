@@ -1076,6 +1076,86 @@ const STUDIO_CATEGORIES = [
   { label: "Marvel / Superhero", match: (m) => m.section === "Marvel / Superhero" },
 ];
 
+// Curated "viewing guides" — richer editorial rows farther down, each with
+// a blurb explaining why to watch and how the titles connect.
+const GUIDE_CAROUSELS = [
+  {
+    label: "Date Night In",
+    match: (m, g) => g.has("Romance"),
+    blurb: "Dim the lights and pour something nice. These are the swooners, the slow-burns and the grand gestures — pictures built around two people and the space between them. Start light, end with a good cry, and let the credits roll without checking your phone.",
+  },
+  {
+    label: "Adrenaline Rush",
+    match: (m, g) => g.has("Action") && (g.has("Thriller") || g.has("Adventure")),
+    blurb: "Set-pieces over subtext. This run is engineered for momentum — chases, shootouts and last-second escapes that never let the tension go slack. Best watched loud, ideally with someone who gasps at the near-misses.",
+  },
+  {
+    label: "Mind-Bending Sci-Fi",
+    match: (m, g) => g.has("Science Fiction") && (g.has("Mystery") || g.has("Drama") || g.has("Thriller")),
+    blurb: "Sci-fi that treats ideas as the main event. Expect unreliable realities, moral puzzles and endings you'll be arguing about at breakfast. They reward attention — and often a second viewing once you know where they're headed.",
+  },
+  {
+    label: "Family Movie Night",
+    match: (m, g) => g.has("Family"),
+    blurb: "The all-ages crowd-pleasers: bright, warm and quotable, with just enough wit for the grown-ups. Line up two, make popcorn, and pick the one with the best sing-along for the encore.",
+  },
+  {
+    label: "Late-Night Frights",
+    match: (m, g) => g.has("Horror") && (g.has("Thriller") || g.has("Mystery")),
+    blurb: "For when the house is quiet and you want it a little less so. These lean on dread and the slow reveal rather than cheap jolts — the kind that follow you to the light switch. Watch back-to-back at your own risk.",
+  },
+  {
+    label: "Feel-Good Comedies",
+    match: (m, g) => g.has("Comedy") && (g.has("Family") || g.has("Music") || g.has("Romance") || g.has("Adventure")),
+    blurb: "Guaranteed serotonin. No dread, no homework — just sharp jokes, big hearts and characters you'd happily spend a sequel with. The perfect palate-cleanser after something heavy.",
+  },
+  {
+    label: "Epic Sagas",
+    match: (m) => (m.runtime || 0) >= 150,
+    blurb: "Clear the evening. These are the sprawling, big-canvas pictures — worlds and lifetimes that earn their runtime and reward your patience. Commit to one and let it fully take over the room.",
+  },
+  {
+    label: "Short & Sweet",
+    match: (m) => m.runtime && m.runtime <= 95,
+    blurb: "Tight, economical and done before bedtime. Not a wasted frame between them — proof that a lean 90 minutes can hit harder than a bloated three hours. Ideal for a school night.",
+  },
+  {
+    label: "Neon '80s",
+    match: (m) => m.year >= 1980 && m.year <= 1989,
+    blurb: "Synths, practical effects and unfiltered ambition. The decade that gave blockbusters their swagger and horror its slasher — a shelf soaked in nostalgia and still endlessly rewatchable.",
+  },
+  {
+    label: "The '90s Shelf",
+    match: (m) => m.year >= 1990 && m.year <= 1999,
+    blurb: "The indie boom meets the last great age of the video store. Sharper dialogue, riskier stories and the films that shaped a generation of movie brains. Double-feature two and feel the era.",
+  },
+  {
+    label: "Y2K & Beyond",
+    match: (m) => m.year >= 2000 && m.year <= 2009,
+    blurb: "The digital turn: franchises going epic, dramas getting bolder, and effects catching up to imagination. A decade that swung big — this is where a lot of modern comfort-watches were born.",
+  },
+  {
+    label: "Modern Masterpieces",
+    match: (m) => m.year >= 2010,
+    blurb: "The recent greats worth revisiting. Ambitious, beautifully made and already earning their place in the canon. If you missed one in theaters, this is your second chance to catch up.",
+  },
+  {
+    label: "Vintage Vault",
+    match: (m) => m.year && m.year < 1970,
+    blurb: "The foundations. Black-and-white masters, Golden-Age craft and the classics every later film is quietly in conversation with. Watch one and you'll start spotting its DNA everywhere else on the shelf.",
+  },
+  {
+    label: "Auteur Theory",
+    match: (m) => Boolean(m.directorCollection) || m.criterion,
+    blurb: "Director-driven cinema, where a single vision runs through every frame. Pair two from the same filmmaker to hear their obsessions rhyme — the recurring themes, the signature shots, the throughline of a career.",
+  },
+  {
+    label: "Crime & Noir",
+    match: (m, g) => g.has("Crime") && (g.has("Mystery") || g.has("Thriller") || g.has("Drama")),
+    blurb: "Shadows, schemers and the long fall. Heists, investigations and morally slippery anti-heroes — stories where everyone wants something and nobody's clean. Cool, tense, and endlessly stylish.",
+  },
+];
+
 // Format categories — lowest priority (Steelbooks lives way down here)
 const FORMAT_CATEGORIES = [
   { label: "4K UHD", match: (m) => (m.primaryFormat || "").includes("4K") },
@@ -1107,7 +1187,7 @@ function renderMobileCarousels(movieList) {
     if (matched.length >= MIN_THEME) sections.push({ label: cat.label, movies: matched });
   }
 
-  // Director collections — one carousel each, largest first
+  // Director collections — one carousel each
   const collMap = new Map();
   for (const m of unique) {
     if (!m.directorCollection) continue;
@@ -1116,7 +1196,6 @@ function renderMobileCarousels(movieList) {
   }
   const dirSections = [...collMap.entries()]
     .filter(([, list]) => list.length >= 2)
-    .sort((a, b) => b[1].length - a[1].length)
     .map(([label, list]) => ({ label: `${label} Collection`, movies: list }));
 
   const studioSections = [];
@@ -1125,16 +1204,26 @@ function renderMobileCarousels(movieList) {
     if (matched.length >= 2) studioSections.push({ label: cat.label, movies: matched });
   }
 
+  // Curated viewing guides (with "why watch" blurbs)
+  const guideSections = [];
+  for (const guide of GUIDE_CAROUSELS) {
+    const matched = unique.filter((m) => guide.match(m, genreSet(m)));
+    if (matched.length >= 3) guideSections.push({ label: guide.label, blurb: guide.blurb, movies: matched });
+  }
+
   const formatSections = [];
   for (const cat of FORMAT_CATEGORIES) {
     const matched = unique.filter(cat.match);
     if (matched.length >= 2) formatSections.push({ label: cat.label, movies: matched });
   }
 
-  // Order: thematic → director collections → studios, with the "All Movies
-  // A-Z" carousel injected a few rows down, then formats (Steelbooks) at the
-  // very bottom.
-  const ordered = [...sections, ...dirSections, ...studioSections];
+  // Shuffle the main pool randomly (stable within a page load, reshuffled on
+  // reload), keep the "All Movies A-Z" row a few down, and pin formats
+  // (Steelbooks) to the very bottom.
+  const pool = [...sections, ...dirSections, ...studioSections, ...guideSections];
+  pool.sort((a, b) => carouselRank(a.label) - carouselRank(b.label));
+
+  const ordered = [...pool];
   const azSection = {
     label: "All Movies A-Z",
     seeAll: true,
@@ -1146,16 +1235,28 @@ function renderMobileCarousels(movieList) {
   for (const section of ordered) renderCarouselSection(section);
 }
 
+// Random-but-stable ordering per page load: each label gets a random rank the
+// first time it's seen; the map is fresh on every reload, so carousels
+// reshuffle on reload but don't jump around during a session.
+const _carouselRank = new Map();
+function carouselRank(label) {
+  if (!_carouselRank.has(label)) _carouselRank.set(label, Math.random());
+  return _carouselRank.get(label);
+}
+
 function renderCarouselSection(section) {
   const wrap = document.createElement("section");
   wrap.className = "carousel-section";
 
   const head = document.createElement("div");
   head.className = "carousel-head";
+  const guideBtn = section.blurb
+    ? '<button class="carousel-guide-toggle" type="button" aria-label="Why watch these" aria-expanded="false">i</button>'
+    : "";
   const trailing = section.seeAll
     ? '<button class="carousel-see-all" type="button">See all →</button>'
     : `<span class="carousel-count">${section.movies.length}</span>`;
-  head.innerHTML = `<h3>${escapeHtml(section.label)}</h3>${trailing}`;
+  head.innerHTML = `<div class="carousel-head-main"><h3>${escapeHtml(section.label)}</h3>${guideBtn}</div>${trailing}`;
   wrap.append(head);
 
   if (section.seeAll) {
@@ -1163,6 +1264,23 @@ function renderCarouselSection(section) {
       appState.mobileAllView = true;
       render();
       window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+  // Expandable "why watch" guide blurb
+  if (section.blurb) {
+    const guide = document.createElement("div");
+    guide.className = "carousel-guide";
+    guide.hidden = true;
+    guide.innerHTML = `<p>${escapeHtml(section.blurb)}</p>`;
+    wrap.append(guide);
+
+    const btn = head.querySelector(".carousel-guide-toggle");
+    btn.addEventListener("click", () => {
+      const open = guide.hidden;
+      guide.hidden = !open;
+      btn.classList.toggle("is-open", open);
+      btn.setAttribute("aria-expanded", String(open));
     });
   }
 
