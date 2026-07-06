@@ -94,6 +94,7 @@ function sanitizeEditablePayload(payload) {
     "primaryFormat", "watchStatus", "notes", "valueSource", "valueDate",
     "condition", "upc", "director", "genre", "posterUrl", "backCoverUrl",
     "spineArtUrl", "artworkSourceName", "artworkSourceUrl", "overview",
+    "essay", "essaySource", "essaySourceTitle",
   ];
   const boolFields = ["steelbook", "criterion", "moviesAnywhere", "seedFavorite"];
   const numberFields = ["personalRating", "purchasePrice", "estimatedValue", "tmdbId", "year", "runtime"];

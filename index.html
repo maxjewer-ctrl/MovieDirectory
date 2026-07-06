@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=20260705-mobile9">
+  <link rel="stylesheet" href="./styles.css?v=20260705-mobile10">
 </head>
 <body>
   <div class="app-shell">
@@ -185,6 +185,7 @@
         <div id="detail-icon-rail" class="detail-icon-rail"></div>
         <p id="detail-hero-title" class="detail-hero-title"></p>
         <div id="detail-poster" class="detail-poster"></div>
+        <button id="full-desc-btn" class="full-desc-btn" type="button">📖 Full description</button>
         <div class="detail-meta">
           <div class="detail-heading-row">
             <div>
@@ -564,6 +565,26 @@
     </div>
   </div>
 
+  <!-- Full Description / Essay Modal -->
+  <div id="essay-modal" class="modal" hidden>
+    <div class="modal-backdrop" data-close-modal="essay-modal"></div>
+    <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="essay-modal-title">
+      <div class="modal-header">
+        <div>
+          <p class="context-label">Full Description</p>
+          <h2 id="essay-modal-title">About the film</h2>
+        </div>
+        <button class="icon-button close-modal-button" type="button" aria-label="Close modal" data-close-modal="essay-modal">×</button>
+      </div>
+      <div id="essay-body" class="essay-body"></div>
+      <p id="essay-source" class="essay-source"></p>
+      <div class="modal-actions">
+        <button id="essay-another" class="ghost-button" type="button">Find another essay</button>
+        <button class="text-action" type="button" data-close-modal="essay-modal">Close</button>
+      </div>
+    </div>
+  </div>
+
   <template id="movie-card-template">
     <article class="movie-card">
       <button class="poster-button" type="button">
@@ -623,8 +644,8 @@
       }
     }
   </script>
-  <script src="./movies-data.js?v=20260705-mobile9"></script>
-  <script src="./app.js?v=20260705-mobile9"></script>
+  <script src="./movies-data.js?v=20260705-mobile10"></script>
+  <script src="./app.js?v=20260705-mobile10"></script>
   <script type="module" src="./case-viewer.js?v=20260705-interactive9-invyaw"></script>
 </body>
 </html>

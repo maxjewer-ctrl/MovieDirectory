@@ -1771,6 +1771,61 @@ select:focus-visible,
   display: none;
 }
 
+/* Full description button (under the case) */
+.full-desc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--btn-ghost-bg);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.full-desc-btn:hover {
+  transform: translateY(-1px);
+}
+
+.detail-panel .full-desc-btn {
+  background: var(--sidebar-nav-hover);
+  color: var(--sidebar-heading);
+}
+
+/* Essay modal */
+.essay-body p {
+  margin: 0 0 12px;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.essay-loading {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.essay-source {
+  margin: 14px 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.essay-source a {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+#essay-another:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 @media (max-width: 1100px) {
   .app-shell {
     display: flex;
@@ -1954,8 +2009,18 @@ select:focus-visible,
   }
 
   .detail-content.hero-collapsed .detail-icon-rail,
-  .detail-content.hero-collapsed .detail-poster {
+  .detail-content.hero-collapsed .detail-poster,
+  .detail-content.hero-collapsed .full-desc-btn {
     display: none;
+  }
+
+  /* Full description button sits under the case, full width */
+  .detail-content .full-desc-btn {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    margin-top: 2px;
+    background: rgba(0, 0, 0, 0.06);
+    color: #1f2937;
   }
 
   .detail-content.hero-collapsed .detail-hero-title {

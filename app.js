@@ -137,6 +137,12 @@ const dom = {
   detailIconRail: document.querySelector("#detail-icon-rail"),
   detailHeroTitle: document.querySelector("#detail-hero-title"),
   heroCollapse: document.querySelector("#hero-collapse"),
+  fullDescBtn: document.querySelector("#full-desc-btn"),
+  essayModal: document.querySelector("#essay-modal"),
+  essayModalTitle: document.querySelector("#essay-modal-title"),
+  essayBody: document.querySelector("#essay-body"),
+  essaySource: document.querySelector("#essay-source"),
+  essayAnother: document.querySelector("#essay-another"),
 };
 
 const libraryFilterDefinitions = [
@@ -2150,6 +2156,168 @@ function focusDetailPanel() {
   document.querySelector(".detail-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
+/* -------------------- Full description / film essay -------------------- */
+
+const essayState = { movieId: null, altIndex: 0 };
+
+// Local cache so essays persist across reloads even without the catalog API.
+const ESSAY_CACHE_KEY = "md-essays-v1";
+function readEssayCache() {
+  try {
+    return JSON.parse(window.localStorage.getItem(ESSAY_CACHE_KEY) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+function getCachedEssay(movieId) {
+  return readEssayCache()[movieId] || null;
+}
+function setCachedEssay(movieId, data) {
+  try {
+    const cache = readEssayCache();
+    cache[movieId] = data;
+    window.localStorage.setItem(ESSAY_CACHE_KEY, JSON.stringify(cache));
+  } catch { /* storage full or unavailable — ignore */ }
+}
+
+// Build a readable essay (lead + critical-reception praise) from a Wikipedia
+// plain-text article extract.
+function composeEssay(extract) {
+  if (!extract) return "";
+  const headerRe = /^={2,}\s*(.+?)\s*={2,}\s*$/;
+  const lead = [];
+  const sections = new Map();
+  let current = null;
+  for (const line of extract.split("\n")) {
+    const m = line.match(headerRe);
+    if (m) {
+      current = m[1].trim();
+      if (!sections.has(current)) sections.set(current, []);
+      continue;
+    }
+    if (current === null) lead.push(line);
+    else sections.get(current).push(line);
+  }
+  let essay = lead.join("\n").trim();
+  // Prefer sections that carry critical praise / legacy
+  let praise = "";
+  for (const [title, body] of sections) {
+    if (!/recept|critical|response|acclaim|praise|legacy|impact/i.test(title)) continue;
+    const text = body.join("\n").trim();
+    if (!text) continue;
+    praise += `${praise ? "\n\n" : ""}${text}`;
+    if (praise.length > 1800) break;
+  }
+  if (praise) essay += `\n\n${praise}`;
+  essay = essay.replace(/\n{3,}/g, "\n\n").trim();
+  if (essay.length > 4200) essay = `${essay.slice(0, 4200).replace(/\s+\S*$/, "")}…`;
+  return essay;
+}
+
+async function fetchFilmEssay(movie, altIndex = 0) {
+  const query = encodeURIComponent(`${movie.title} ${movie.year || ""} film`.trim());
+  const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&list=search&srlimit=6&srsearch=${query}`;
+  const searchRes = await fetch(searchUrl);
+  if (!searchRes.ok) throw new Error("search failed");
+  const searchData = await searchRes.json();
+  const results = searchData?.query?.search || [];
+  if (!results.length) throw new Error("No article found for this title.");
+  const pick = results[altIndex % results.length];
+  const pageTitle = pick.title;
+
+  const extractUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&prop=extracts&explaintext=1&exsectionformat=wiki&redirects=1&titles=${encodeURIComponent(pageTitle)}`;
+  const exRes = await fetch(extractUrl);
+  if (!exRes.ok) throw new Error("extract failed");
+  const exData = await exRes.json();
+  const page = Object.values(exData?.query?.pages || {})[0];
+  const essay = composeEssay(page?.extract || "");
+  if (!essay) throw new Error("Couldn't build an essay from that article.");
+
+  return {
+    text: essay,
+    sourceUrl: `https://en.wikipedia.org/wiki/${encodeURIComponent(pageTitle.replace(/ /g, "_"))}`,
+    sourceTitle: pageTitle,
+  };
+}
+
+function renderEssay(text, sourceUrl, sourceTitle) {
+  dom.essayBody.innerHTML = "";
+  for (const para of String(text).split(/\n+/)) {
+    const trimmed = para.trim();
+    if (!trimmed) continue;
+    const p = document.createElement("p");
+    p.textContent = trimmed;
+    dom.essayBody.append(p);
+  }
+  if (sourceUrl) {
+    dom.essaySource.innerHTML = `Source: <a href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(sourceTitle || "Wikipedia")}</a> · text from Wikipedia (CC BY-SA)`;
+    dom.essaySource.hidden = false;
+  } else {
+    dom.essaySource.hidden = true;
+  }
+}
+
+function setEssayLoading(message) {
+  dom.essayBody.innerHTML = `<p class="essay-loading">${escapeHtml(message)}</p>`;
+  dom.essaySource.hidden = true;
+}
+
+async function loadEssay({ replace = false } = {}) {
+  const movie = getMovieById(essayState.movieId);
+  if (!movie) return;
+
+  // Show the cached essay instantly unless the user asked for a new one
+  if (!replace && movie.essay) {
+    renderEssay(movie.essay, movie.essaySource, movie.essaySourceTitle);
+    return;
+  }
+  if (!replace) {
+    const cached = getCachedEssay(movie.id);
+    if (cached) {
+      movie.essay = cached.text;
+      movie.essaySource = cached.sourceUrl;
+      movie.essaySourceTitle = cached.sourceTitle;
+      renderEssay(cached.text, cached.sourceUrl, cached.sourceTitle);
+      return;
+    }
+  }
+
+  if (replace) essayState.altIndex += 1;
+  dom.essayAnother.disabled = true;
+  setEssayLoading(replace ? "Finding another essay online…" : "Fetching a full description online…");
+
+  try {
+    const result = await fetchFilmEssay(movie, essayState.altIndex);
+    renderEssay(result.text, result.sourceUrl, result.sourceTitle);
+    // Cache to the film record (persists to the DB when the catalog API is live)
+    saveMovieMetadataQuiet(movie.id, {
+      essay: result.text,
+      essaySource: result.sourceUrl,
+      essaySourceTitle: result.sourceTitle,
+    });
+    movie.essay = result.text;
+    movie.essaySource = result.sourceUrl;
+    movie.essaySourceTitle = result.sourceTitle;
+    setCachedEssay(movie.id, { text: result.text, sourceUrl: result.sourceUrl, sourceTitle: result.sourceTitle });
+  } catch (error) {
+    console.error("Essay fetch failed:", error);
+    dom.essayBody.innerHTML = `<p class="essay-loading">Couldn't load an essay right now (${escapeHtml(error.message || "network error")}). Please try again.</p>`;
+    dom.essaySource.hidden = true;
+  } finally {
+    dom.essayAnother.disabled = false;
+  }
+}
+
+function openEssayModal() {
+  const movie = getMovieById(appState.selectedMovieId);
+  if (!movie) return;
+  essayState.movieId = movie.id;
+  essayState.altIndex = 0;
+  dom.essayModalTitle.textContent = movie.title;
+  openModal("essay-modal");
+  loadEssay({ replace: false });
+}
+
 function openSidebar() {
   dom.sidebar?.classList.add("sidebar-open");
   dom.sidebarBackdrop?.classList.add("is-visible");
@@ -2554,6 +2722,14 @@ function bindEvents() {
       applyHeroCollapsed();
       saveState();
     });
+  }
+
+  // Full description / film essay
+  if (dom.fullDescBtn) {
+    dom.fullDescBtn.addEventListener("click", openEssayModal);
+  }
+  if (dom.essayAnother) {
+    dom.essayAnother.addEventListener("click", () => loadEssay({ replace: true }));
   }
 
   // Re-render when crossing the mobile/desktop breakpoint
