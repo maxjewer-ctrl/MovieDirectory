@@ -1048,6 +1048,8 @@ select:focus-visible,
   --case-back-art-bg:
     linear-gradient(180deg, rgba(166, 171, 178, 0.95), rgba(112, 118, 126, 0.98));
   --case-back-art-color: rgba(255, 255, 255, 0.9);
+  --case-back-band-bg: linear-gradient(180deg, rgba(2, 6, 38, 1) 0%, rgba(6, 18, 66, 0.98) 100%);
+  --case-back-band-h: 22%;
   --case-front-shadow: 0 30px 44px rgba(8, 14, 28, 0.32);
   --case-tilt: 7deg;
   --case-spin-start: -38deg;
@@ -1071,6 +1073,7 @@ select:focus-visible,
   --case-back-bg: linear-gradient(180deg, rgba(42, 42, 48, 0.96), rgba(8, 8, 10, 1));
   --case-back-art-bg:
     linear-gradient(180deg, rgba(104, 104, 110, 0.96), rgba(56, 56, 62, 0.99));
+  --case-back-band-bg: linear-gradient(180deg, rgba(0, 0, 2, 1) 0%, rgba(2, 2, 8, 0.99) 100%);
 }
 
 .detail-case.is-criterion {
@@ -1088,6 +1091,7 @@ select:focus-visible,
   --case-back-art-bg:
     linear-gradient(180deg, rgba(218, 218, 218, 0.98), rgba(176, 176, 176, 1));
   --case-back-art-color: rgba(28, 28, 28, 0.78);
+  --case-back-band-bg: linear-gradient(180deg, #eaeaea 0%, #f0f0f0 100%);
 }
 
 .detail-case.is-steelbook {
@@ -1109,6 +1113,7 @@ select:focus-visible,
   --case-back-art-bg:
     linear-gradient(165deg, rgba(172, 178, 188, 0.95), rgba(118, 124, 136, 0.99) 44%, rgba(204, 208, 216, 0.96));
   --case-front-shadow: 0 30px 44px rgba(62, 72, 90, 0.28);
+  --case-back-band-bg: linear-gradient(180deg, rgba(72, 78, 90, 0.98) 0%, rgba(98, 104, 116, 0.96) 100%);
 }
 
 .detail-case-shadow {
@@ -1191,17 +1196,32 @@ select:focus-visible,
     inset 0 -24px 36px rgba(0, 0, 0, 0.14);
 }
 
+.detail-case-back-band {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--case-back-band-h);
+  background: var(--case-back-band-bg);
+}
+
 .detail-case-back-img {
   position: absolute;
-  inset: 0;
+  top: var(--case-back-band-h);
+  left: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
-  height: 100%;
+  height: calc(100% - var(--case-back-band-h));
   object-fit: cover;
 }
 
 .detail-case-back-overlay {
   position: absolute;
-  inset: 0;
+  top: var(--case-back-band-h);
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: grid;
   place-items: center;
   background:

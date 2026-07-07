@@ -2280,6 +2280,7 @@ function renderDetailPoster(movie) {
       </div>
       <div class="detail-case-back" aria-hidden="true">
         <div class="detail-case-back-art">
+          <div class="detail-case-back-band" aria-hidden="true"></div>
           ${backArtMarkup}
         </div>
       </div>
