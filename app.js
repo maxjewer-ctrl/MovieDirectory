@@ -2412,35 +2412,43 @@ async function setPosterFromCarousel(movie, poster) {
   renderPosterCarousel(movie);
 
   try {
-    const [frontDownload, backDownload, spineDownload] = await Promise.all([
-      fetch("./api/poster/download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ remoteUrl: poster.frontUrl, movieId: movie.id }),
-      }).then((resp) => resp.json()),
-      poster.backUrl
-        ? fetch("./api/artwork/download", {
+    const tryDownload = async (url, body) => {
+      try {
+        const resp = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ remoteUrl: poster.backUrl, movieId: movie.id, role: "back" }),
-        }).then((resp) => resp.json())
+          body: JSON.stringify(body),
+        });
+        return resp.ok ? resp.json() : { localUrl: null };
+      } catch {
+        return { localUrl: null };
+      }
+    };
+
+    const [frontDownload, backDownload, spineDownload] = await Promise.all([
+      tryDownload("./api/poster/download", { remoteUrl: poster.frontUrl, movieId: movie.id }),
+      poster.backUrl
+        ? tryDownload("./api/artwork/download", { remoteUrl: poster.backUrl, movieId: movie.id, role: "back" })
         : Promise.resolve({ localUrl: "" }),
       poster.spineUrl
-        ? fetch("./api/artwork/download", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ remoteUrl: poster.spineUrl, movieId: movie.id, role: "spine" }),
-        }).then((resp) => resp.json())
+        ? tryDownload("./api/artwork/download", { remoteUrl: poster.spineUrl, movieId: movie.id, role: "spine" })
         : Promise.resolve({ localUrl: "" }),
     ]);
 
-    await patchMovie(movie.id, {
+    const changes = {
       posterUrl: frontDownload.localUrl || poster.frontUrl,
       backCoverUrl: backDownload.localUrl || poster.backUrl || "",
       spineArtUrl: spineDownload.localUrl || poster.spineUrl || "",
       artworkSourceName: poster.sourceName || "",
       artworkSourceUrl: poster.sourceUrl || "",
-    });
+    };
+
+    try {
+      await patchMovie(movie.id, changes);
+    } catch {
+      Object.assign(movie, changes);
+    }
+
     document.getElementById("poster-modal").hidden = true;
     posterCarousel = { movieId: null, posters: [], index: 0, saving: false };
     renderDetail();
