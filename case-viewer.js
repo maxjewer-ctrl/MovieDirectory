@@ -192,11 +192,9 @@ function drawBlurayBand(ctx, cw, bandH) {
   drawBlurayBandImpl(ctx, cw, bandH, "#00307a", "#00b8e0", "#ffffff");
 }
 
-// White band — used on the back cover to match real physical Blu-ray cases
+// Blue band for back cover — matches shell/spine so the blue wraps all the way around
 function drawBlurayBandBack(ctx, cw, bandH) {
-  drawBlurayBandImpl(ctx, cw, bandH, "#ffffff", "#009fc8", "#009fc8");
-  ctx.fillStyle = "rgba(0,0,0,0.06)";
-  ctx.fillRect(0, bandH - 1, cw, 1);
+  drawBlurayBandImpl(ctx, cw, bandH, "#003580", "#00b8e0", "#ffffff");
 }
 
 // 4K Ultra HD badge: pill shape with black "4K" left and white "Ultra HD™" right.
@@ -291,7 +289,7 @@ function makeBackCoverTexture(movie, img) {
   canvas.height = ch;
   const ctx = canvas.getContext("2d");
   const type = getCaseType(movie);
-  const bandH = Math.round(ch * 0.13);
+  const bandH = type === "4k" ? Math.round(ch * 0.09) : Math.round(ch * 0.13);
   if (type !== "criterion") {
     drawFormatBand(ctx, cw, bandH, type, true);
     ctx.save();
@@ -316,11 +314,18 @@ function makeFrontCoverTexture(movie, img) {
   canvas.width = cw;
   canvas.height = ch;
   const ctx = canvas.getContext("2d");
-  coverFit(ctx, img, 0, 0, cw, ch);
   const type = getCaseType(movie);
   if (type !== "criterion") {
-    const bandH = type === "4k" ? Math.round(ch * 0.08) : Math.round(ch * 0.06);
+    const bandH = type === "4k" ? Math.round(ch * 0.05) : Math.round(ch * 0.06);
     drawFormatBand(ctx, cw, bandH, type);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, bandH, cw, ch - bandH);
+    ctx.clip();
+    coverFit(ctx, img, 0, bandH, cw, ch - bandH);
+    ctx.restore();
+  } else {
+    coverFit(ctx, img, 0, 0, cw, ch);
   }
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
