@@ -48,7 +48,7 @@ const appState = {
   addMovieTab: "manual",
   pendingSpecialFeatures: [],
   mobileAllView: false,
-  heroCollapsed: false,
+  mobileTab: "shelf",
 };
 
 let movies = [];
@@ -146,8 +146,10 @@ const dom = {
   detailIconRail: document.querySelector("#detail-icon-rail"),
   detailHeroTitle: document.querySelector("#detail-hero-title"),
   heroCollapse: document.querySelector("#hero-collapse"),
+  sheetBackdrop: document.querySelector("#sheet-backdrop"),
   fullDescBtn: document.querySelector("#full-desc-btn"),
   addPlaylistBtn: document.querySelector("#add-playlist-btn"),
+  changeCoverBtn: document.querySelector("#change-cover-btn"),
   playlistModal: document.querySelector("#playlist-modal"),
   playlistPicker: document.querySelector("#playlist-picker"),
   playlistNewBtn: document.querySelector("#playlist-new-btn"),
@@ -563,7 +565,6 @@ function loadState() {
     appState.activeFilter = migrateActiveFilter(parsed.activeFilter, parsed.activeQuickFilter);
     appState.activeQuickFilter = parsed.activeQuickFilter || "all";
     appState.selectedMovieId = parsed.selectedMovieId || null;
-    appState.heroCollapsed = Boolean(parsed.heroCollapsed);
     appState.favorites = new Set(parsed.favorites || [...buildSeedFavorites()]);
     const storedLists = Array.isArray(parsed.lists) && parsed.lists.length
       ? parsed.lists
@@ -595,7 +596,6 @@ function saveState() {
     activeFilter: appState.activeFilter,
     activeQuickFilter: appState.activeQuickFilter,
     selectedMovieId: appState.selectedMovieId,
-    heroCollapsed: appState.heroCollapsed,
     favorites: [...appState.favorites],
     lists: appState.lists,
   };
@@ -919,9 +919,7 @@ function selectMovie(movieId) {
   // Update carousel active outline without a full re-render
   document.querySelectorAll(".carousel-card.carousel-active").forEach((el) => el.classList.remove("carousel-active"));
   document.querySelectorAll(`.carousel-card[data-movie-id="${movieId}"]`).forEach((el) => el.classList.add("carousel-active"));
-  if (window.innerWidth <= 1100 && dom.detailPanel) {
-    dom.detailPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  openSpotlight();
 }
 
 function render() {
@@ -1030,17 +1028,26 @@ function renderHeader(visibleMovies) {
 function renderCollection(groups) {
   dom.collectionContainer.innerHTML = "";
 
+  // Mobile renders per bottom-bar tab: Shelf carousels, Find, Lists, Stats
+  if (window.innerWidth <= 1100) {
+    const tab = appState.mobileTab || "shelf";
+    if (tab === "find") {
+      renderFindTab();
+    } else if (tab === "lists") {
+      renderListsTab();
+    } else if (tab === "stats") {
+      renderStatsTab();
+    } else {
+      renderShelfTab(groups.flatMap((g) => g.movies));
+    }
+    return;
+  }
+
   if (!groups.some((group) => group.movies.length)) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
     empty.innerHTML = "<h3>No titles matched</h3><p>Try a broader search, a different sidebar selection, or clear the current search.</p>";
     dom.collectionContainer.append(empty);
-    return;
-  }
-
-  // On mobile, render format/collection carousels instead of the grid
-  if (window.innerWidth <= 1100) {
-    renderMobileCarousels(groups.flatMap((g) => g.movies));
     return;
   }
 
@@ -1188,6 +1195,329 @@ const FORMAT_CATEGORIES = [
   { label: "4K UHD", match: (m) => (m.primaryFormat || "").includes("4K") },
   { label: "Steelbooks", match: (m) => m.steelbook },
 ];
+
+/* -------------------- Mobile bottom-bar tabs -------------------- */
+
+// Quick filters surfaced as chips on the Shelf tab
+const SHELF_CHIP_IDS = [
+  "all", "favorites", "format-4k", "format-bluray", "format-dvd",
+  "criterion", "steelbook", "unwatched", "top-rated",
+];
+
+function renderShelfTab(movieList) {
+  const head = document.createElement("div");
+  head.className = "shelf-head";
+  head.innerHTML = `<h2>Shelf<span class="shelf-count">${movieList.length} titles</span></h2>`;
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "shelf-add-btn";
+  addBtn.textContent = "＋ Add";
+  addBtn.addEventListener("click", openAddMovieModal);
+  head.append(addBtn);
+  dom.collectionContainer.append(head);
+
+  const chips = document.createElement("div");
+  chips.className = "shelf-chips";
+  const filter = appState.activeFilter;
+
+  // Active search or a filter picked on another tab shows as a clear chip
+  if (appState.search.trim()) {
+    const clear = document.createElement("button");
+    clear.type = "button";
+    clear.className = "shelf-chip is-clear";
+    clear.textContent = `✕ “${appState.search.trim()}”`;
+    clear.addEventListener("click", () => {
+      appState.search = "";
+      if (dom.searchInput) dom.searchInput.value = "";
+      saveState();
+      render();
+    });
+    chips.append(clear);
+  }
+  if (filter.type !== "preset") {
+    const meta = getActiveSelectionMeta();
+    const clear = document.createElement("button");
+    clear.type = "button";
+    clear.className = "shelf-chip is-clear";
+    clear.textContent = `✕ ${meta.heading}`;
+    clear.addEventListener("click", () => setActiveFilter("preset", "all"));
+    chips.append(clear);
+  }
+
+  for (const id of SHELF_CHIP_IDS) {
+    const def = getLibraryFilterDefinition(id);
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "shelf-chip";
+    chip.classList.toggle("is-active", filter.type === "preset" && filter.value === id);
+    chip.textContent = def.label;
+    chip.addEventListener("click", () => setActiveFilter("preset", id));
+    chips.append(chip);
+  }
+  dom.collectionContainer.append(chips);
+
+  if (!movieList.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.innerHTML = "<h3>No titles matched</h3><p>Try a different chip, clear the search, or add a movie.</p>";
+    dom.collectionContainer.append(empty);
+    return;
+  }
+  renderMobileCarousels(movieList);
+}
+
+function renderFindTab() {
+  const wrap = document.createElement("div");
+
+  const input = document.createElement("input");
+  input.type = "search";
+  input.className = "find-search";
+  input.placeholder = "Titles, directors, genres, UPC…";
+  input.value = appState.search;
+  wrap.append(input);
+
+  // Repeat directors as one-tap filters
+  const dirs = getDirectorFilters().slice(0, 12);
+  if (dirs.length) {
+    const chips = document.createElement("div");
+    chips.className = "find-chips";
+    for (const d of dirs) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "shelf-chip";
+      chip.textContent = `${d.label} · ${d.count}`;
+      chip.addEventListener("click", () => {
+        setActiveFilter("director", d.label);
+        setMobileTab("shelf");
+      });
+      chips.append(chip);
+    }
+    wrap.append(chips);
+  }
+
+  const results = document.createElement("div");
+  wrap.append(results);
+  dom.collectionContainer.append(wrap);
+
+  const renderResults = () => {
+    results.innerHTML = "";
+    const term = appState.search.trim().toLowerCase();
+    const matched = movies
+      .filter((m) => !term || m.searchBlob.includes(term))
+      .sort((a, b) => a.sortTitle.localeCompare(b.sortTitle));
+
+    if (!matched.length) {
+      results.innerHTML = '<p class="find-empty">Nothing matched. Check the spelling or try a director, genre, or UPC.</p>';
+      return;
+    }
+
+    const grid = document.createElement("div");
+    grid.className = "all-grid";
+    const letterEls = new Map();
+    let currentLetter = "";
+    for (const movie of matched) {
+      const first = (movie.sortTitle[0] || "#").toUpperCase();
+      const letter = /[A-Z]/.test(first) ? first : "#";
+      if (letter !== currentLetter) {
+        currentLetter = letter;
+        const h = document.createElement("div");
+        h.className = "find-letter";
+        h.textContent = letter;
+        letterEls.set(letter, h);
+        grid.append(h);
+      }
+      grid.append(renderCarouselCard(movie));
+    }
+    results.append(grid);
+
+    // Alphabet fast-scroll rail (only worth showing on a long list)
+    if (letterEls.size >= 5) {
+      const rail = document.createElement("div");
+      rail.className = "find-rail";
+      for (const [letter, el] of letterEls) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = letter;
+        btn.addEventListener("click", () => {
+          el.scrollIntoView({ block: "start", behavior: "smooth" });
+        });
+        rail.append(btn);
+      }
+      results.append(rail);
+    }
+  };
+
+  // Re-render only the results while typing so the input keeps focus
+  let findTimer = null;
+  input.addEventListener("input", () => {
+    appState.search = input.value;
+    if (dom.searchInput) dom.searchInput.value = input.value;
+    saveState();
+    clearTimeout(findTimer);
+    findTimer = setTimeout(renderResults, 160);
+  });
+
+  renderResults();
+}
+
+function renderListsTab() {
+  const head = document.createElement("div");
+  head.className = "shelf-head";
+  head.innerHTML = "<h2>Lists</h2>";
+  const newBtn = document.createElement("button");
+  newBtn.type = "button";
+  newBtn.className = "shelf-add-btn";
+  newBtn.textContent = "＋ New list";
+  newBtn.addEventListener("click", () => openModal("list-modal"));
+  head.append(newBtn);
+  dom.collectionContainer.append(head);
+
+  const addRows = (title, items, emptyMessage) => {
+    const section = document.createElement("section");
+    section.className = "mtab-section";
+    section.innerHTML = `<h3>${escapeHtml(title)}</h3>`;
+    const rows = document.createElement("div");
+    rows.className = "mtab-rows";
+    if (!items.length) {
+      rows.innerHTML = `<p class="find-empty">${escapeHtml(emptyMessage)}</p>`;
+    }
+    for (const item of items) {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "mtab-row";
+      row.classList.toggle("is-active", item.active);
+      row.innerHTML = `
+        <span><span class="row-label">${escapeHtml(item.label)}</span>
+        ${item.sub ? `<span class="row-sub">${escapeHtml(item.sub)}</span>` : ""}</span>
+        <span class="row-count">${item.count}</span>
+      `;
+      row.addEventListener("click", item.onClick);
+      rows.append(row);
+    }
+    section.append(rows);
+    dom.collectionContainer.append(section);
+  };
+
+  addRows(
+    "Your Lists",
+    appState.lists.map((list) => ({
+      label: list.name,
+      count: list.movieIds.length,
+      active: appState.activeFilter.type === "list" && appState.activeFilter.value === list.id,
+      onClick: () => {
+        setActiveFilter("list", list.id);
+        setMobileTab("shelf");
+      },
+    })),
+    "No lists yet. Create one with the button above."
+  );
+
+  addRows(
+    "AI Playlists",
+    buildAiPlaylists().map((playlist) => ({
+      label: playlist.label,
+      sub: playlist.description,
+      count: playlist.movieIds.length,
+      active: appState.activeFilter.type === "playlist" && appState.activeFilter.value === playlist.id,
+      onClick: () => {
+        setActiveFilter("playlist", playlist.id);
+        setMobileTab("shelf");
+      },
+    })),
+    "Playlists appear once the catalog loads."
+  );
+
+  addRows(
+    "Genres",
+    getGenreFilters().map((genre) => ({
+      label: genre.label,
+      count: genre.count,
+      active: appState.activeFilter.type === "genre" && appState.activeFilter.value === genre.label,
+      onClick: () => {
+        setActiveFilter("genre", genre.label);
+        setMobileTab("shelf");
+      },
+    })),
+    "No genres found."
+  );
+}
+
+function renderStatsTab() {
+  const head = document.createElement("div");
+  head.className = "shelf-head";
+  head.innerHTML = "<h2>Stats</h2>";
+  dom.collectionContainer.append(head);
+
+  const grid = document.createElement("div");
+  grid.className = "stats-grid";
+  for (const stat of getStats()) {
+    const tile = document.createElement("div");
+    tile.className = "stat-tile";
+    tile.innerHTML = `
+      <div class="stat-value">${escapeHtml(String(stat.value))}</div>
+      <div class="stat-label">${escapeHtml(stat.label)}</div>
+    `;
+    grid.append(tile);
+  }
+  dom.collectionContainer.append(grid);
+
+  const settings = document.createElement("section");
+  settings.className = "mtab-section";
+  settings.innerHTML = "<h3>Sort &amp; View</h3>";
+  const sg = document.createElement("div");
+  sg.className = "settings-grid";
+
+  const makeSelect = (label, options, current, onChange) => {
+    const field = document.createElement("label");
+    const span = document.createElement("span");
+    span.textContent = label;
+    const select = document.createElement("select");
+    for (const [value, text] of options) {
+      const opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = text;
+      select.append(opt);
+    }
+    select.value = current;
+    select.addEventListener("change", () => onChange(select.value));
+    field.append(span, select);
+    sg.append(field);
+  };
+
+  makeSelect("Theme", [
+    ["warm", "Warm"], ["midnight", "Midnight"], ["ocean", "Ocean"],
+    ["forest", "Forest"], ["rose", "Rosé"],
+  ], appState.theme, (value) => {
+    appState.theme = value;
+    if (dom.themeSelect) dom.themeSelect.value = value;
+    if (dom.themeSelectM) dom.themeSelectM.value = value;
+    applyTheme();
+    saveState();
+  });
+
+  makeSelect("Sort", [
+    ["inventory", "Inventory Order"], ["title", "Title A-Z"], ["section", "Category"],
+    ["favorites", "Favorites First"], ["value", "Most Valuable"], ["rating", "Highest Rated"],
+  ], appState.sort, (value) => {
+    appState.sort = value;
+    if (dom.sortSelect) dom.sortSelect.value = value;
+    saveState();
+    render();
+  });
+
+  makeSelect("Organize", [
+    ["none", "Flat View"], ["section", "By Category"], ["format", "By Format"],
+    ["director", "By Director"], ["tag", "By Collection Tag"],
+  ], appState.group, (value) => {
+    appState.group = value;
+    if (dom.groupSelect) dom.groupSelect.value = value;
+    saveState();
+    render();
+  });
+
+  settings.append(sg);
+  dom.collectionContainer.append(settings);
+}
 
 function renderMobileCarousels(movieList) {
   // Dedupe by id
@@ -1574,7 +1904,6 @@ function renderDetail() {
   dom.detailContent.hidden = false;
   renderDetailPoster(movie);
   renderDetailIconRail(movie);
-  applyHeroCollapsed();
   if (dom.detailHeroTitle) dom.detailHeroTitle.textContent = movie.title;
   dom.detailSection.textContent = movie.subsection || movie.section;
   dom.detailTitle.textContent = movie.title;
@@ -1818,15 +2147,35 @@ function movieTraitIcons(movie) {
   return icons;
 }
 
-function applyHeroCollapsed() {
-  if (!dom.detailContent) return;
-  const collapsed = Boolean(appState.heroCollapsed);
-  dom.detailContent.classList.toggle("hero-collapsed", collapsed);
-  if (dom.heroCollapse) {
-    dom.heroCollapse.textContent = collapsed ? "▼" : "▲";
-    dom.heroCollapse.setAttribute("aria-expanded", String(!collapsed));
-    dom.heroCollapse.setAttribute("aria-label", collapsed ? "Expand preview" : "Collapse preview");
-  }
+/* -------------------- Spotlight sheet (mobile) -------------------- */
+
+function isMobileViewport() {
+  return window.innerWidth <= 1100;
+}
+
+function openSpotlight() {
+  if (!isMobileViewport() || !dom.detailPanel) return;
+  dom.detailPanel.classList.add("is-open");
+  dom.detailPanel.scrollTop = 0;
+  dom.sheetBackdrop?.removeAttribute("hidden");
+  dom.sheetBackdrop?.classList.add("is-visible");
+  document.body.classList.add("sheet-locked");
+}
+
+function closeSpotlight() {
+  dom.detailPanel?.classList.remove("is-open");
+  dom.sheetBackdrop?.classList.remove("is-visible");
+  document.body.classList.remove("sheet-locked");
+}
+
+function setMobileTab(tab) {
+  appState.mobileTab = tab;
+  closeSpotlight();
+  document.querySelectorAll("#mobile-tabbar .mtab").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.tab === tab);
+  });
+  render();
+  window.scrollTo({ top: 0, behavior: "instant" });
 }
 
 function renderDetailIconRail(movie) {
@@ -1931,6 +2280,7 @@ function renderDetailPoster(movie) {
       </div>
       <div class="detail-case-back" aria-hidden="true">
         <div class="detail-case-back-art">
+          <div class="detail-case-back-band" aria-hidden="true"></div>
           ${backArtMarkup}
         </div>
       </div>
@@ -1944,13 +2294,11 @@ function renderDetailPoster(movie) {
   `;
   wrapper.append(caseNode);
 
-  if (movie.tmdbId && apiConfig.hasTmdbKey) {
-    const browseBtn = document.createElement("button");
-    browseBtn.type = "button";
-    browseBtn.className = "poster-browse-button";
-    browseBtn.textContent = "Browse Covers";
-    browseBtn.addEventListener("click", () => openPosterCarousel(movie));
-    wrapper.append(browseBtn);
+  // The cover picker is reachable from the "Change cover" button in the hero
+  // action row (discoverable on mobile), enabled when alternate covers can be
+  // fetched for this title.
+  if (dom.changeCoverBtn) {
+    dom.changeCoverBtn.hidden = !movie.tmdbId;
   }
 
   dom.detailPoster.append(wrapper);
@@ -2782,14 +3130,18 @@ function bindEvents() {
     });
   }
 
-  // Collapse / expand the rotating preview hero
+  // Spotlight sheet: grabber and backdrop both dismiss
   if (dom.heroCollapse) {
-    dom.heroCollapse.addEventListener("click", () => {
-      appState.heroCollapsed = !appState.heroCollapsed;
-      applyHeroCollapsed();
-      saveState();
-    });
+    dom.heroCollapse.addEventListener("click", closeSpotlight);
   }
+  if (dom.sheetBackdrop) {
+    dom.sheetBackdrop.addEventListener("click", closeSpotlight);
+  }
+
+  // Bottom tab bar
+  document.querySelectorAll("#mobile-tabbar .mtab").forEach((btn) => {
+    btn.addEventListener("click", () => setMobileTab(btn.dataset.tab));
+  });
 
   // Add to playlist
   if (dom.addPlaylistBtn) {
@@ -2797,6 +3149,48 @@ function bindEvents() {
   }
   if (dom.playlistNewBtn) {
     dom.playlistNewBtn.addEventListener("click", () => openModal("list-modal"));
+  }
+
+  // Change cover art — opens the alternate-cover picker for the selection.
+  if (dom.changeCoverBtn) {
+    dom.changeCoverBtn.addEventListener("click", () => {
+      const movie = getMovieById(appState.selectedMovieId);
+      if (movie) openPosterCarousel(movie);
+    });
+  }
+
+  // Double-tap / double-click the cover to flip it and show the back. The
+  // WebGL viewer handles its own flip; this covers the CSS-case fallback that
+  // renders when the 3D viewer isn't active.
+  if (dom.detailPoster) {
+    let lastPosterTap = 0;
+    let posterDownX = 0;
+    let posterDownY = 0;
+    let posterMoved = false;
+    dom.detailPoster.addEventListener("pointerdown", (e) => {
+      posterDownX = e.clientX;
+      posterDownY = e.clientY;
+      posterMoved = false;
+    });
+    dom.detailPoster.addEventListener("pointermove", (e) => {
+      if (!posterMoved && Math.hypot(e.clientX - posterDownX, e.clientY - posterDownY) > 8) {
+        posterMoved = true;
+      }
+    });
+    dom.detailPoster.addEventListener("pointerup", () => {
+      if (posterMoved) return;
+      // The 3D viewer owns the flip when its canvas is present.
+      if (dom.detailPoster.querySelector(".case-viewer-canvas")) return;
+      const caseObj = dom.detailPoster.querySelector(".detail-case-object");
+      if (!caseObj) return;
+      const now = performance.now();
+      if (now - lastPosterTap < 320) {
+        lastPosterTap = 0;
+        caseObj.classList.toggle("is-flipped");
+      } else {
+        lastPosterTap = now;
+      }
+    });
   }
 
   // Full description / film essay
@@ -2813,6 +3207,7 @@ function bindEvents() {
     const isMobile = window.innerWidth <= 1100;
     if (isMobile !== lastIsMobile) {
       lastIsMobile = isMobile;
+      if (!isMobile) closeSpotlight();
       render();
     }
   });

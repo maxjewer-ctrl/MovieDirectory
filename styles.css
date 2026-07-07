@@ -1048,6 +1048,8 @@ select:focus-visible,
   --case-back-art-bg:
     linear-gradient(180deg, rgba(166, 171, 178, 0.95), rgba(112, 118, 126, 0.98));
   --case-back-art-color: rgba(255, 255, 255, 0.9);
+  --case-back-band-bg: linear-gradient(180deg, rgba(2, 6, 38, 1) 0%, rgba(6, 18, 66, 0.98) 100%);
+  --case-back-band-h: 22%;
   --case-front-shadow: 0 30px 44px rgba(8, 14, 28, 0.32);
   --case-tilt: 7deg;
   --case-spin-start: -38deg;
@@ -1071,6 +1073,7 @@ select:focus-visible,
   --case-back-bg: linear-gradient(180deg, rgba(42, 42, 48, 0.96), rgba(8, 8, 10, 1));
   --case-back-art-bg:
     linear-gradient(180deg, rgba(104, 104, 110, 0.96), rgba(56, 56, 62, 0.99));
+  --case-back-band-bg: linear-gradient(180deg, rgba(0, 0, 2, 1) 0%, rgba(2, 2, 8, 0.99) 100%);
 }
 
 .detail-case.is-criterion {
@@ -1088,6 +1091,7 @@ select:focus-visible,
   --case-back-art-bg:
     linear-gradient(180deg, rgba(218, 218, 218, 0.98), rgba(176, 176, 176, 1));
   --case-back-art-color: rgba(28, 28, 28, 0.78);
+  --case-back-band-bg: linear-gradient(180deg, #eaeaea 0%, #f0f0f0 100%);
 }
 
 .detail-case.is-steelbook {
@@ -1109,6 +1113,7 @@ select:focus-visible,
   --case-back-art-bg:
     linear-gradient(165deg, rgba(172, 178, 188, 0.95), rgba(118, 124, 136, 0.99) 44%, rgba(204, 208, 216, 0.96));
   --case-front-shadow: 0 30px 44px rgba(62, 72, 90, 0.28);
+  --case-back-band-bg: linear-gradient(180deg, rgba(72, 78, 90, 0.98) 0%, rgba(98, 104, 116, 0.96) 100%);
 }
 
 .detail-case-shadow {
@@ -1191,17 +1196,32 @@ select:focus-visible,
     inset 0 -24px 36px rgba(0, 0, 0, 0.14);
 }
 
+.detail-case-back-band {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--case-back-band-h);
+  background: var(--case-back-band-bg);
+}
+
 .detail-case-back-img {
   position: absolute;
-  inset: 0;
+  top: var(--case-back-band-h);
+  left: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
-  height: 100%;
+  height: calc(100% - var(--case-back-band-h));
   object-fit: cover;
 }
 
 .detail-case-back-overlay {
   position: absolute;
-  inset: 0;
+  top: var(--case-back-band-h);
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: grid;
   place-items: center;
   background:
@@ -1876,6 +1896,52 @@ select:focus-visible,
 }
 
 @media (max-width: 1100px) {
+  /* The collector's cabinet: on phones the app commits to one identity —
+     warm charcoal ground, brass accent, poster art supplying the color.
+     Token-level override so every mobile surface follows, while desktop
+     keeps its selectable themes. */
+  :root,
+  :root[data-theme] {
+    color-scheme: dark;
+    --bg: #14110c;
+    --bg-deep: #0f0d09;
+    --panel: rgba(26, 22, 16, 0.92);
+    --panel-strong: rgba(22, 18, 13, 0.97);
+    --line: rgba(201, 150, 75, 0.14);
+    --line-strong: rgba(201, 150, 75, 0.28);
+    --text: #ece6da;
+    --muted: #9a927e;
+    --accent: #c9964b;
+    --accent-soft: rgba(201, 150, 75, 0.16);
+    --gold: #c9964b;
+    --gold-soft: rgba(201, 150, 75, 0.16);
+    --shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
+    --html-bg: radial-gradient(circle at top left, rgba(201, 150, 75, 0.09), transparent 32%),
+      linear-gradient(160deg, #171310 0%, #121009 58%, #0f0d09 100%);
+    --body-overlay: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0));
+    --main-bg: linear-gradient(180deg, rgba(30, 25, 18, 0.55), rgba(20, 17, 12, 0.85));
+    --main-border: rgba(255, 255, 255, 0.05);
+    --input-bg: rgba(255, 255, 255, 0.06);
+    --input-border: rgba(255, 255, 255, 0.14);
+    --input-focus-border: rgba(201, 150, 75, 0.55);
+    --input-focus-shadow: rgba(201, 150, 75, 0.18);
+    --card-bg: rgba(255, 255, 255, 0.04);
+    --card-border: rgba(255, 255, 255, 0.07);
+    --card-shadow: 0 16px 30px rgba(0, 0, 0, 0.35);
+    --chip-bg: rgba(255, 255, 255, 0.05);
+    --chip-border: rgba(255, 255, 255, 0.13);
+    --chip-active-bg: rgba(201, 150, 75, 0.2);
+    --chip-active-border: rgba(201, 150, 75, 0.42);
+    --btn-primary-bg: linear-gradient(180deg, #d8a558, #ab7c36);
+    --btn-primary-text: #1a1409;
+    --btn-primary-shadow: 0 14px 24px rgba(0, 0, 0, 0.4);
+    --btn-ghost-bg: rgba(255, 255, 255, 0.07);
+    --toggle-bg: rgba(255, 255, 255, 0.08);
+    --stat-bg: rgba(255, 255, 255, 0.04);
+    --stat-border: rgba(255, 255, 255, 0.07);
+    --group-header-bg: linear-gradient(180deg, rgba(23, 19, 14, 0.96), rgba(23, 19, 14, 0.7));
+  }
+
   .app-shell {
     display: flex;
     flex-direction: column;
@@ -1940,36 +2006,9 @@ select:focus-visible,
     display: inline-flex;
   }
 
-  /* "Expand" tab fixed to the left edge, reading as a pull-tab for the
-     drawer (rounded rectangle connected to the screen edge). */
+  /* Drawer retired on mobile: navigation lives in the bottom tab bar now.
+     The drawer markup stays for desktop-width fallbacks but has no opener. */
   .sidebar-toggle-button {
-    position: fixed;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 115;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px 7px;
-    border: 1px solid var(--sidebar-border);
-    border-left: 0;
-    border-radius: 0 14px 14px 0;
-    background: var(--sidebar-bg);
-    color: var(--sidebar-heading);
-    box-shadow: 3px 3px 14px rgba(0, 0, 0, 0.32);
-  }
-
-  .sidebar-toggle-label {
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-    letter-spacing: 0.16em;
-    font-size: 0.76rem;
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-
-  .sidebar-toggle-button.is-open {
     display: none;
   }
 
@@ -2003,102 +2042,214 @@ select:focus-visible,
     padding-right: 0;
   }
 
-  /* Detail panel: compact hero, sticky at the top */
+  /* Spotlight sheet: the detail panel becomes a full-height bottom sheet.
+     Hidden until a title is tapped; slides up over the tab bar and dismisses
+     via the grabber or backdrop. Replaces the old sticky hero entirely. */
   .detail-panel {
     order: 0;
-    position: sticky;
-    top: 8px;
-    z-index: 10;
-    padding: 8px;
-    background: transparent;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 8vh;
+    top: 8dvh;
+    z-index: 108;
+    margin: 0;
+    padding: 0 14px 28px;
     border: 0;
-    box-shadow: none;
-    max-height: 60vh;
-    overflow: visible;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.55);
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    transform: translateY(105%);
+    transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1);
+    visibility: hidden;
+    background: #1a1613;
   }
 
-  /* White hero card: icon rail (left) spanning title + smaller case (right) */
+  .detail-panel.is-open {
+    transform: translateY(0);
+    visibility: visible;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .detail-panel {
+      transition: none;
+    }
+  }
+
+  /* Backdrop behind the open sheet */
+  .sheet-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 104;
+    background: rgba(10, 8, 5, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 280ms ease;
+  }
+
+  .sheet-backdrop.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* No scroll bleed under an open sheet */
+  body.sheet-locked {
+    overflow: hidden;
+  }
+
+  /* The "choose a title" empty state never applies inside the sheet */
+  .detail-empty {
+    display: none;
+  }
+
+  /* Spotlight hero: stage on top, then title, trait icons, actions, editor */
   .detail-content {
     position: relative;
-    display: grid;
-    grid-template-columns: 40px 1fr;
-    gap: 8px 10px;
-    align-items: start;
-    background: #fff;
-    border-radius: 18px;
-    padding: 12px;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+    display: flex;
+    flex-direction: column;
+    background: transparent;
+    border-radius: 0;
+    padding: 0 0 4px;
+    box-shadow: none;
   }
 
-  /* Collapse / expand chevron in the hero card */
+  /* The stage: full-bleed dark pedestal with a brass key light. The case
+     spins here — on a stage the rotation is the exhibit, not a space cost. */
+  .detail-content .detail-poster,
+  .detail-content .detail-poster:has(.detail-poster-img) {
+    order: 0;
+    position: relative;
+    width: calc(100% + 28px);
+    margin: 0 -14px;
+    max-width: none;
+    min-height: unset;
+    aspect-ratio: auto;
+    background:
+      radial-gradient(ellipse 72% 58% at 50% 34%, rgba(201, 150, 75, 0.2), transparent 72%),
+      linear-gradient(180deg, #221d14 0%, #17130e 55%, #121009 100%);
+    padding: 20px 0 36px;
+    overflow: hidden;
+  }
+
+  .detail-content .detail-poster::after {
+    content: "drag to spin · double-tap to flip";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 10px;
+    text-align: center;
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+    color: rgba(240, 234, 224, 0.45);
+    pointer-events: none;
+  }
+
+  .detail-content .detail-poster-scene {
+    padding: 0;
+    min-height: unset;
+  }
+
+  .detail-content .detail-case {
+    --case-width: min(62vw, 244px);
+    margin: 0 auto;
+  }
+
+  .detail-content .case-viewer-container {
+    max-width: min(64vw, 252px);
+  }
+
+  /* CSS-case fallback on the stage: the idle spin returns; a double-tap
+     pauses it and holds the back cover. */
+  .detail-content .detail-case-object {
+    animation: detail-case-rotate 14s linear infinite;
+  }
+
+  .detail-content .detail-case-object.is-flipped {
+    animation: none !important;
+    transform: rotateX(4deg) rotateY(168deg) !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .detail-content .detail-case-object {
+      animation: none;
+      transform: rotateX(4deg) rotateY(-14deg);
+    }
+  }
+
+  /* Sheet grabber — full-width dismiss handle pinned to the sheet's top */
   .hero-collapse {
     display: flex;
     align-items: center;
     justify-content: center;
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    z-index: 2;
-    width: 30px;
-    height: 30px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    width: calc(100% + 28px);
+    margin: 0 -14px;
+    height: 26px;
     padding: 0;
     border: 0;
-    border-radius: 9px;
-    background: rgba(0, 0, 0, 0.05);
-    color: #1f2937;
-    font-size: 0.72rem;
+    border-radius: 22px 22px 0 0;
+    background: #1a1613;
+    color: transparent;
+    font-size: 0;
     line-height: 1;
     cursor: pointer;
   }
 
-  /* Collapsed hero: hide the case + rail, leaving just the title bar */
-  .detail-content.hero-collapsed {
-    grid-template-columns: 1fr;
-    padding: 10px 44px 10px 14px;
+  /* The grabber pill itself */
+  .hero-collapse::before {
+    content: "";
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.32);
   }
 
-  .detail-content.hero-collapsed .detail-icon-rail,
-  .detail-content.hero-collapsed .detail-poster,
-  .detail-content.hero-collapsed .hero-actions {
-    display: none;
-  }
-
-  /* Action buttons stacked under the case, full width */
+  /* Action row under the trait icons */
   .detail-content .hero-actions {
-    grid-column: 1 / -1;
-    grid-row: 3;
-    margin-top: 2px;
+    order: 3;
+    margin-top: 12px;
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .detail-content .hero-actions .full-desc-btn {
+    flex: 1 1 45%;
+    width: auto;
+  }
+
+  .detail-content .hero-actions .full-desc-btn:first-child {
+    flex-basis: 100%;
   }
 
   .detail-content .full-desc-btn {
-    background: rgba(0, 0, 0, 0.06);
-    color: #1f2937;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ece6da;
   }
 
-  .detail-content.hero-collapsed .detail-hero-title {
-    grid-column: 1;
-    grid-row: 1;
-    font-size: 1.25rem;
-  }
-
+  /* Trait icons in a centered row under the title */
   .detail-icon-rail {
+    order: 2;
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
     align-items: center;
-    grid-column: 1;
-    grid-row: 1 / span 2;
-    padding-top: 2px;
+    padding-top: 10px;
   }
 
   .detail-icon-rail .rail-icon {
     width: 40px;
     height: 40px;
-    background: rgba(0, 0, 0, 0.05);
-    color: #1f2937;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ece6da;
     font-size: 1.05rem;
   }
 
@@ -2116,57 +2267,56 @@ select:focus-visible,
     display: flex;
   }
 
-  /* Title above the case, inside the white card */
+  /* Title centered under the stage */
   .detail-hero-title {
+    order: 1;
     display: block;
-    grid-column: 2;
-    grid-row: 1;
-    margin: 0;
-    color: #161616;
+    margin: 16px 10px 0;
+    color: #f0eae2;
+    text-align: center;
     font-family: "Cormorant Garamond", Georgia, serif;
-    font-size: clamp(1.3rem, 5vw, 1.8rem);
+    font-size: clamp(1.5rem, 6.4vw, 2.1rem);
     font-weight: 600;
-    line-height: 1;
+    line-height: 1.05;
     letter-spacing: -0.02em;
     text-wrap: balance;
   }
 
-  .detail-content .detail-poster,
-  .detail-content .detail-poster:has(.detail-poster-img) {
-    grid-column: 2;
-    grid-row: 2;
-    width: 100%;
-    max-width: 168px;
-    margin: 0 auto;
-    min-height: unset;
-    aspect-ratio: 0.72;
-    background: #fff;
-    padding: 0;
-  }
-
-  .case-viewer-container {
-    max-width: 100%;
-  }
-
-  /* No text block under the image — the synopsis lives on the case back. */
+  /* The editor returns on mobile: it scrolls below the hero inside the
+     Spotlight sheet (rating, watch status, notes, value, special features). */
   .detail-meta {
+    display: block;
+    order: 4;
+    padding-top: 12px;
+  }
+
+  /* The hero title already names the movie — drop the duplicate heading */
+  .detail-meta .detail-heading-row {
     display: none;
   }
 
-  /* Compact content header — keep only a small visible-title count */
+  .detail-meta .detail-subtitle {
+    text-align: center;
+    margin: 0 0 8px;
+  }
+
+  .detail-meta .detail-chip-row {
+    justify-content: center;
+  }
+
+  /* The sheet shares the desktop panel's dark ground, so its cream-on-dark
+     field styles apply as designed — only the block chrome needs tuning. */
+  .detail-meta .detail-block {
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+
+  /* Content header retired on mobile — the Shelf tab renders its own head */
   .content-header {
-    margin: 2px 0 0;
-    gap: 2px;
-  }
-
-  .content-header .context-label,
-  #results-heading {
     display: none;
-  }
-
-  .results-summary {
-    font-size: 0.72rem;
-    margin: 0;
   }
 
   .main-stage {
@@ -2200,11 +2350,326 @@ select:focus-visible,
     font-size: 0.68rem;
     margin-top: 5px;
   }
+
+  /* Room for the fixed tab bar */
+  .main-stage {
+    padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Modals stack above the Spotlight sheet (essay, playlist, cover picker) */
+  .modal {
+    z-index: 140;
+  }
+
+  /* ---- Bottom tab bar ---- */
+  .mobile-tabbar {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 102;
+    padding: 6px 8px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--panel-strong);
+    border-top: 1px solid var(--line);
+    backdrop-filter: blur(14px);
+  }
+
+  .mtab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 0 2px;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 12px;
+  }
+
+  .mtab svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .mtab span {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .mtab.is-active {
+    color: var(--accent);
+  }
+
+  /* ---- Shelf filter chips ---- */
+  .shelf-chips {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    padding: 2px 2px 8px;
+    margin: 0 0 4px;
+    scrollbar-width: none;
+  }
+
+  .shelf-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .shelf-chip {
+    flex: 0 0 auto;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--chip-border);
+    background: var(--chip-bg);
+    color: var(--text);
+    font-size: 0.76rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .shelf-chip.is-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #1a1409;
+  }
+
+  .shelf-chip.is-clear {
+    background: var(--accent-soft);
+    border-color: transparent;
+    color: var(--accent);
+  }
+
+  /* ---- Shelf header row (title + add button) ---- */
+  .shelf-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 2px 0 8px;
+  }
+
+  .shelf-head h2 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+
+  .shelf-head .shelf-count {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-left: 8px;
+  }
+
+  .shelf-add-btn {
+    border: 0;
+    border-radius: 999px;
+    padding: 8px 14px;
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* ---- Find tab ---- */
+  .find-search {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--text);
+    font-size: 0.95rem;
+    margin: 4px 0 10px;
+  }
+
+  .find-search:focus {
+    outline: none;
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-shadow);
+  }
+
+  .find-chips {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    padding: 0 2px 10px;
+    scrollbar-width: none;
+  }
+
+  .find-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .find-letter {
+    grid-column: 1 / -1;
+    margin: 8px 0 0;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .find-empty {
+    color: var(--muted);
+    font-size: 0.86rem;
+    padding: 18px 4px;
+  }
+
+  /* Alphabet fast-scroll rail along the right edge of Find results */
+  .find-rail {
+    position: fixed;
+    right: 1px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 3px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.32);
+  }
+
+  .find-rail button {
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 0.58rem;
+    font-weight: 800;
+    padding: 1px 5px;
+    line-height: 1.3;
+    cursor: pointer;
+  }
+
+  .find-rail button:active {
+    color: var(--accent);
+  }
+
+  /* ---- Lists tab ---- */
+  .mtab-section {
+    margin: 6px 0 18px;
+  }
+
+  .mtab-section > h3 {
+    margin: 0 0 8px;
+    font-size: 1.05rem;
+  }
+
+  .mtab-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .mtab-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    padding: 12px 14px;
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    background: var(--card-bg);
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .mtab-row .row-label {
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+
+  .mtab-row .row-sub {
+    display: block;
+    font-weight: 500;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .mtab-row .row-count {
+    flex: 0 0 auto;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  .mtab-row.is-active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  /* ---- Stats tab ---- */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 6px 0 18px;
+  }
+
+  .stat-tile {
+    background: var(--stat-bg);
+    border: 1px solid var(--stat-border);
+    border-radius: 14px;
+    padding: 12px 14px;
+  }
+
+  .stat-tile .stat-value {
+    font-size: 1.3rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat-tile .stat-label {
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .settings-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .settings-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  .settings-grid select {
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--text);
+    font-size: 0.9rem;
+  }
 }
 
 /* Mobile view controls hidden on desktop */
 .mobile-view-controls {
   display: none;
+}
+
+/* Mobile tab bar and sheet backdrop exist only on mobile widths */
+@media (min-width: 1101px) {
+  .mobile-tabbar,
+  .sheet-backdrop {
+    display: none;
+  }
 }
 
 /* Sidebar selects for mobile controls */
