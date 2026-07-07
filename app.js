@@ -1206,8 +1206,8 @@ const SHELF_CHIP_IDS = [
 
 function renderShelfTab(movieList) {
   const head = document.createElement("div");
-  head.className = "shelf-head";
-  head.innerHTML = `<h2>Shelf<span class="shelf-count">${movieList.length} titles</span></h2>`;
+  head.className = "shelf-head shelf-head-main";
+  head.innerHTML = `<h2>Max's Movies</h2>`;
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.className = "shelf-add-btn";

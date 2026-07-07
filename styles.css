@@ -2462,6 +2462,23 @@ select:focus-visible,
     margin-left: 8px;
   }
 
+  .shelf-head-main {
+    position: relative;
+    justify-content: flex-end;
+  }
+
+  .shelf-head-main h2 {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-style: italic;
+    font-weight: 600;
+    font-size: 2rem;
+    letter-spacing: 0.03em;
+  }
+
   .shelf-add-btn {
     border: 0;
     border-radius: 999px;
