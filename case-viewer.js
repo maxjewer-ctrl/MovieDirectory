@@ -134,82 +134,128 @@ function getCaseType(movie) {
   return "bluray";
 }
 
-// Draw the Blu-ray disc logo: white oval with dark "BD", then "Blu-ray Disc™" text.
-function drawBlurayBand(ctx, cw, bandH) {
-  ctx.fillStyle = "#00187a";
-  ctx.fillRect(0, 0, cw, bandH);
-  ctx.fillStyle = "rgba(140,180,255,0.25)";
-  ctx.fillRect(0, bandH - 1, cw, 1);
-
-  const cy = bandH / 2;
-  const s = bandH / 72;            // scale relative to reference band height
-  const ovalRx = 24 * s, ovalRy = 18 * s;
-  const logoW = ovalRx * 2 + 10 * s + ctx.measureText("Blu-ray Disc™").width;
-  // (rough pre-measure; we'll recalculate below)
-  const labelFont = `bold ${Math.round(17 * s)}px sans-serif`;
-  ctx.font = labelFont;
-  const labelW = ctx.measureText("Blu-ray Disc™").width;
-  const totalW = ovalRx * 2 + 8 * s + labelW;
-  const startX = cw / 2 - totalW / 2 + ovalRx;
-
-  // White oval
-  ctx.save();
-  ctx.beginPath();
-  ctx.ellipse(startX, cy, ovalRx, ovalRy, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(255,255,255,0.97)";
-  ctx.fill();
-
-  // "BD" inside oval
-  ctx.fillStyle = "#00187a";
-  ctx.font = `bold ${Math.round(13 * s)}px sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("BD", startX, cy + 1);
-  ctx.restore();
-
-  // "Blu-ray Disc™" to the right
-  ctx.fillStyle = "rgba(255,255,255,0.97)";
-  ctx.font = labelFont;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  ctx.fillText("Blu-ray Disc™", startX + ovalRx + 8 * s, cy);
+function roundRectPath(ctx, x, y, w, h, r) {
+  const [tl, tr, br, bl] = Array.isArray(r) ? r : [r, r, r, r];
+  ctx.moveTo(x + tl, y);
+  ctx.lineTo(x + w - tr, y);
+  ctx.arcTo(x + w, y, x + w, y + tr, tr);
+  ctx.lineTo(x + w, y + h - br);
+  ctx.arcTo(x + w, y + h, x + w - br, y + h, br);
+  ctx.lineTo(x + bl, y + h);
+  ctx.arcTo(x, y + h, x, y + h - bl, bl);
+  ctx.lineTo(x, y + tl);
+  ctx.arcTo(x, y, x + tl, y, tl);
+  ctx.closePath();
 }
 
-// Draw the 4K Ultra HD logo: large "4K" left, stacked "ULTRA / HD™" right.
-function draw4KBand(ctx, cw, bandH) {
-  ctx.fillStyle = "#060608";
+// Draws the BD disc mark: oval + center hole + upper-right arc sweep.
+function drawBDDisc(ctx, cx, cy, r, color) {
+  const rx = r * 1.1, ry = r;
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx * 0.24, ry * 0.24, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "white";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx + rx * 0.38, cy - ry * 0.28, r * 0.62, -Math.PI * 0.96, Math.PI * 0.04);
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = r * 0.17;
+  ctx.lineCap = "round";
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawBlurayBandImpl(ctx, cw, bandH, bgColor, discColor, textColor) {
+  ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, cw, bandH);
-  ctx.fillStyle = "rgba(255,255,255,0.12)";
-  ctx.fillRect(0, bandH - 1, cw, 1);
-
   const cy = bandH / 2;
-  const s = bandH / 80;
-  const bigSize = Math.round(38 * s);
-  const smSize  = Math.round(15 * s);
-  const gap = 5 * s;
-
-  ctx.fillStyle = "rgba(255,255,255,0.97)";
-  ctx.textBaseline = "middle";
-
-  ctx.font = `bold ${bigSize}px sans-serif`;
-  const fourKW = ctx.measureText("4K").width;
-
-  ctx.font = `bold ${smSize}px sans-serif`;
-  const ultraW = ctx.measureText("ULTRA").width;
-  const hdW    = ctx.measureText("HD™").width;
-  const rightW = Math.max(ultraW, hdW);
-
-  const totalW = fourKW + gap + rightW;
-  const startX = cw / 2 - totalW / 2;
-
-  ctx.font = `bold ${bigSize}px sans-serif`;
+  const s = bandH / 70;
+  const r = 22 * s;
+  const fs = Math.round(17 * s);
+  ctx.font = `italic bold ${fs}px sans-serif`;
+  const tw = ctx.measureText("Blu-ray Disc™").width;
+  const discCX = cw / 2 - (r * 2.2 + 8 * s + tw) / 2 + r * 1.1;
+  drawBDDisc(ctx, discCX, cy, r, discColor);
+  ctx.fillStyle = textColor;
+  ctx.font = `italic bold ${fs}px sans-serif`;
   ctx.textAlign = "left";
-  ctx.fillText("4K", startX, cy);
+  ctx.textBaseline = "middle";
+  ctx.fillText("Blu-ray Disc™", discCX + r * 1.1 + 8 * s, cy);
+}
 
-  ctx.font = `bold ${smSize}px sans-serif`;
-  const rx = startX + fourKW + gap;
-  ctx.fillText("ULTRA", rx, cy - smSize * 0.6);
-  ctx.fillText("HD™",   rx, cy + smSize * 0.6);
+// Dark blue band — overlaid on the front cover poster
+function drawBlurayBand(ctx, cw, bandH) {
+  drawBlurayBandImpl(ctx, cw, bandH, "#00307a", "#00b8e0", "#ffffff");
+}
+
+// White band — used on the back cover to match real physical Blu-ray cases
+function drawBlurayBandBack(ctx, cw, bandH) {
+  drawBlurayBandImpl(ctx, cw, bandH, "#ffffff", "#009fc8", "#009fc8");
+  ctx.fillStyle = "rgba(0,0,0,0.06)";
+  ctx.fillRect(0, bandH - 1, cw, 1);
+}
+
+// 4K Ultra HD badge: pill shape with black "4K" left and white "Ultra HD™" right.
+function draw4KBand(ctx, cw, bandH) {
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(0, 0, cw, bandH);
+  const cy = bandH / 2;
+  const bh = Math.round(bandH * 0.65);
+  const br = Math.round(bh * 0.17);
+  const fsK = Math.round(bh * 0.52);
+  const fsU = Math.round(bh * 0.22);
+  const fsH = Math.round(bh * 0.38);
+  ctx.font = `bold ${fsK}px sans-serif`;
+  const wK = ctx.measureText("4K").width;
+  ctx.font = `bold ${fsU}px sans-serif`;
+  const wU = ctx.measureText("Ultra").width;
+  ctx.font = `bold ${fsH}px sans-serif`;
+  const wH = ctx.measureText("HD™").width;
+  const rightTextW = Math.max(wU, wH);
+  const padX = bh * 0.18;
+  const sep  = bh * 0.08;
+  const leftW  = padX + wK + sep;
+  const rightW = sep + rightTextW + padX;
+  const bw = leftW + rightW;
+  const bx = cw / 2 - bw / 2;
+  const by = cy - bh / 2;
+  ctx.save();
+  // White pill
+  ctx.beginPath();
+  roundRectPath(ctx, bx, by, bw, bh, br);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  // Black left section
+  ctx.save();
+  ctx.beginPath();
+  roundRectPath(ctx, bx, by, leftW, bh, [br, 0, 0, br]);
+  ctx.fillStyle = "#000000";
+  ctx.fill();
+  ctx.restore();
+  // Black border around entire badge
+  ctx.beginPath();
+  roundRectPath(ctx, bx, by, bw, bh, br);
+  ctx.strokeStyle = "#000000";
+  ctx.lineWidth = Math.max(1, bh * 0.04);
+  ctx.stroke();
+  ctx.restore();
+  // "4K" text
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `bold ${fsK}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("4K", bx + leftW / 2, cy);
+  // "Ultra" / "HD™" stacked text
+  ctx.fillStyle = "#000000";
+  const rx = bx + leftW + rightW / 2;
+  ctx.font = `bold ${fsU}px sans-serif`;
+  ctx.fillText("Ultra", rx, cy - fsH * 0.38);
+  ctx.font = `bold ${fsH}px sans-serif`;
+  ctx.fillText("HD™", rx, cy + fsU * 0.5);
 }
 
 function drawSteelbookBand(ctx, cw, bandH) {
@@ -225,9 +271,9 @@ function drawSteelbookBand(ctx, cw, bandH) {
   ctx.fillText("COLLECTOR'S EDITION", cw / 2, bandH / 2);
 }
 
-function drawFormatBand(ctx, cw, bandH, type) {
-  if (type === "4k")        draw4KBand(ctx, cw, bandH);
-  else if (type === "bluray") drawBlurayBand(ctx, cw, bandH);
+function drawFormatBand(ctx, cw, bandH, type, forBack) {
+  if (type === "4k")          draw4KBand(ctx, cw, bandH);
+  else if (type === "bluray") (forBack ? drawBlurayBandBack : drawBlurayBand)(ctx, cw, bandH);
   else                        drawSteelbookBand(ctx, cw, bandH);
 }
 
@@ -247,7 +293,7 @@ function makeBackCoverTexture(movie, img) {
   const type = getCaseType(movie);
   const bandH = Math.round(ch * 0.20);
   if (type !== "criterion") {
-    drawFormatBand(ctx, cw, bandH, type);
+    drawFormatBand(ctx, cw, bandH, type, true);
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, bandH, cw, ch - bandH);
