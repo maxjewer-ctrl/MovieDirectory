@@ -146,6 +146,7 @@ const dom = {
   detailIconRail: document.querySelector("#detail-icon-rail"),
   detailHeroTitle: document.querySelector("#detail-hero-title"),
   heroCollapse: document.querySelector("#hero-collapse"),
+  detailCloseBottom: document.querySelector("#detail-close-bottom"),
   sheetBackdrop: document.querySelector("#sheet-backdrop"),
   fullDescBtn: document.querySelector("#full-desc-btn"),
   addPlaylistBtn: document.querySelector("#add-playlist-btn"),
@@ -3141,6 +3142,9 @@ function bindEvents() {
   // Spotlight sheet: grabber and backdrop both dismiss
   if (dom.heroCollapse) {
     dom.heroCollapse.addEventListener("click", closeSpotlight);
+  }
+  if (dom.detailCloseBottom) {
+    dom.detailCloseBottom.addEventListener("click", closeSpotlight);
   }
   if (dom.sheetBackdrop) {
     dom.sheetBackdrop.addEventListener("click", closeSpotlight);

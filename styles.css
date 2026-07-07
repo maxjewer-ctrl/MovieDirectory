@@ -2205,10 +2205,33 @@ select:focus-visible,
   /* The grabber pill itself */
   .hero-collapse::before {
     content: "";
-    width: 40px;
-    height: 4px;
+    width: 44px;
+    height: 5px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.32);
+    background: rgba(255, 255, 255, 0.72);
+  }
+
+  /* Bottom close button — only visible inside the mobile sheet */
+  .detail-close-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    margin-top: 28px;
+    padding: 14px;
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+
+  .detail-close-bottom:active {
+    background: rgba(255, 255, 255, 0.14);
   }
 
   /* Action row under the trait icons */
@@ -2683,7 +2706,8 @@ select:focus-visible,
 /* Mobile tab bar and sheet backdrop exist only on mobile widths */
 @media (min-width: 1101px) {
   .mobile-tabbar,
-  .sheet-backdrop {
+  .sheet-backdrop,
+  .detail-close-bottom {
     display: none;
   }
 }
