@@ -58,7 +58,7 @@ function easeToRestYaw(targetYaw, targetTilt, ease) {
   return Math.abs(diff) < 0.01 && Math.abs(model.rotation.x - targetTilt) < 0.01;
 }
 
-function makeSpineTexture(title, year) {
+function makeSpineTexture(title, year, bgColor) {
   // The canvas WIDTH maps to the spine's narrow on-screen dimension (~25px).
   // Keep cw small so the font fills that width — a 256px canvas shrunk to
   // 25px makes a 42px font appear as only ~4px tall, which is unreadable.
@@ -69,7 +69,7 @@ function makeSpineTexture(title, year) {
   canvas.height = ch;
   const ctx = canvas.getContext("2d");
 
-  ctx.fillStyle = "#1a1a2e";
+  ctx.fillStyle = bgColor || "#1a1a2e";
   ctx.fillRect(0, 0, cw, ch);
 
   // Rotate CCW so text flows bottom-to-top along the spine.
@@ -291,7 +291,7 @@ function makeBackCoverTexture(movie, img) {
   canvas.height = ch;
   const ctx = canvas.getContext("2d");
   const type = getCaseType(movie);
-  const bandH = Math.round(ch * 0.20);
+  const bandH = Math.round(ch * 0.13);
   if (type !== "criterion") {
     drawFormatBand(ctx, cw, bandH, type, true);
     ctx.save();
@@ -319,7 +319,7 @@ function makeFrontCoverTexture(movie, img) {
   coverFit(ctx, img, 0, 0, cw, ch);
   const type = getCaseType(movie);
   if (type !== "criterion") {
-    const bandH = type === "4k" ? Math.round(ch * 0.11) : Math.round(ch * 0.09);
+    const bandH = type === "4k" ? Math.round(ch * 0.08) : Math.round(ch * 0.06);
     drawFormatBand(ctx, cw, bandH, type);
   }
   const tex = new THREE.CanvasTexture(canvas);
@@ -417,8 +417,12 @@ function loadTexture(url) {
 function applyMovieTextures(movie) {
   if (!model || !movie) return;
 
+  const type = getCaseType(movie);
+  const shellHex = type === "4k" ? 0x050505 : type === "bluray" ? 0x003580 : null;
+  const spineBg  = type === "4k" ? "#050505" : type === "bluray" ? "#003580" : null;
+
   const frontUrl = movie.posterUrl || null;
-  const spineTex = makeSpineTexture(movie.title, movie.year);
+  const spineTex = makeSpineTexture(movie.title, movie.year, spineBg);
 
   model.traverse((node) => {
     if (!node.isMesh) return;
@@ -465,6 +469,11 @@ function applyMovieTextures(movie) {
         mat.needsUpdate = true;
         node.material = mat;
       }
+    } else if (matName === "car_plastic_dark" && shellHex !== null) {
+      const mat = node.material.clone();
+      mat.color.set(shellHex);
+      mat.needsUpdate = true;
+      node.material = mat;
     }
   });
 }
