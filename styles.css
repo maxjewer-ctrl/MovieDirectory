@@ -1876,6 +1876,52 @@ select:focus-visible,
 }
 
 @media (max-width: 1100px) {
+  /* The collector's cabinet: on phones the app commits to one identity —
+     warm charcoal ground, brass accent, poster art supplying the color.
+     Token-level override so every mobile surface follows, while desktop
+     keeps its selectable themes. */
+  :root,
+  :root[data-theme] {
+    color-scheme: dark;
+    --bg: #14110c;
+    --bg-deep: #0f0d09;
+    --panel: rgba(26, 22, 16, 0.92);
+    --panel-strong: rgba(22, 18, 13, 0.97);
+    --line: rgba(201, 150, 75, 0.14);
+    --line-strong: rgba(201, 150, 75, 0.28);
+    --text: #ece6da;
+    --muted: #9a927e;
+    --accent: #c9964b;
+    --accent-soft: rgba(201, 150, 75, 0.16);
+    --gold: #c9964b;
+    --gold-soft: rgba(201, 150, 75, 0.16);
+    --shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
+    --html-bg: radial-gradient(circle at top left, rgba(201, 150, 75, 0.09), transparent 32%),
+      linear-gradient(160deg, #171310 0%, #121009 58%, #0f0d09 100%);
+    --body-overlay: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0));
+    --main-bg: linear-gradient(180deg, rgba(30, 25, 18, 0.55), rgba(20, 17, 12, 0.85));
+    --main-border: rgba(255, 255, 255, 0.05);
+    --input-bg: rgba(255, 255, 255, 0.06);
+    --input-border: rgba(255, 255, 255, 0.14);
+    --input-focus-border: rgba(201, 150, 75, 0.55);
+    --input-focus-shadow: rgba(201, 150, 75, 0.18);
+    --card-bg: rgba(255, 255, 255, 0.04);
+    --card-border: rgba(255, 255, 255, 0.07);
+    --card-shadow: 0 16px 30px rgba(0, 0, 0, 0.35);
+    --chip-bg: rgba(255, 255, 255, 0.05);
+    --chip-border: rgba(255, 255, 255, 0.13);
+    --chip-active-bg: rgba(201, 150, 75, 0.2);
+    --chip-active-border: rgba(201, 150, 75, 0.42);
+    --btn-primary-bg: linear-gradient(180deg, #d8a558, #ab7c36);
+    --btn-primary-text: #1a1409;
+    --btn-primary-shadow: 0 14px 24px rgba(0, 0, 0, 0.4);
+    --btn-ghost-bg: rgba(255, 255, 255, 0.07);
+    --toggle-bg: rgba(255, 255, 255, 0.08);
+    --stat-bg: rgba(255, 255, 255, 0.04);
+    --stat-border: rgba(255, 255, 255, 0.07);
+    --group-header-bg: linear-gradient(180deg, rgba(23, 19, 14, 0.96), rgba(23, 19, 14, 0.7));
+  }
+
   .app-shell {
     display: flex;
     flex-direction: column;
@@ -1990,10 +2036,9 @@ select:focus-visible,
     z-index: 108;
     margin: 0;
     padding: 0 14px 28px;
-    background: #fff;
     border: 0;
     border-radius: 22px 22px 0 0;
-    box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.55);
     max-height: none;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -2001,6 +2046,7 @@ select:focus-visible,
     transform: translateY(105%);
     transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1);
     visibility: hidden;
+    background: #1a1613;
   }
 
   .detail-panel.is-open {
@@ -2129,7 +2175,7 @@ select:focus-visible,
     padding: 0;
     border: 0;
     border-radius: 22px 22px 0 0;
-    background: #fff;
+    background: #1a1613;
     color: transparent;
     font-size: 0;
     line-height: 1;
@@ -2142,7 +2188,7 @@ select:focus-visible,
     width: 40px;
     height: 4px;
     border-radius: 999px;
-    background: rgba(0, 0, 0, 0.24);
+    background: rgba(255, 255, 255, 0.32);
   }
 
   /* Action row under the trait icons */
@@ -2164,8 +2210,8 @@ select:focus-visible,
   }
 
   .detail-content .full-desc-btn {
-    background: rgba(0, 0, 0, 0.06);
-    color: #1f2937;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ece6da;
   }
 
   /* Trait icons in a centered row under the title */
@@ -2182,8 +2228,8 @@ select:focus-visible,
   .detail-icon-rail .rail-icon {
     width: 40px;
     height: 40px;
-    background: rgba(0, 0, 0, 0.05);
-    color: #1f2937;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ece6da;
     font-size: 1.05rem;
   }
 
@@ -2206,7 +2252,7 @@ select:focus-visible,
     order: 1;
     display: block;
     margin: 16px 10px 0;
-    color: #161616;
+    color: #f0eae2;
     text-align: center;
     font-family: "Cormorant Garamond", Georgia, serif;
     font-size: clamp(1.5rem, 6.4vw, 2.1rem);
@@ -2238,84 +2284,14 @@ select:focus-visible,
     justify-content: center;
   }
 
-  .detail-meta,
-  .detail-meta h2,
-  .detail-meta h3,
-  .detail-meta h4,
-  .detail-meta dd {
-    color: #1f2430;
-  }
-
-  .detail-meta .detail-subtitle,
-  .detail-meta .detail-section,
-  .detail-meta .detail-facts dt,
-  .detail-meta .save-status {
-    color: #6b7280;
-  }
-
+  /* The sheet shares the desktop panel's dark ground, so its cream-on-dark
+     field styles apply as designed — only the block chrome needs tuning. */
   .detail-meta .detail-block {
-    background: rgba(0, 0, 0, 0.04);
-    border: 1px solid rgba(0, 0, 0, 0.06);
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 14px;
     padding: 12px 14px;
     margin-bottom: 10px;
-  }
-
-  /* High-specificity: the desktop panel's cream-on-dark field rules
-     (.detail-panel .editor-field select, .detail-panel textarea, …) are
-     defined after this block, so these must outrank them. */
-  .detail-panel .detail-meta input,
-  .detail-panel .detail-meta select,
-  .detail-panel .detail-meta .editor-field select,
-  .detail-panel .detail-meta textarea {
-    background: #fff;
-    color: #1f2430;
-    border: 1px solid rgba(0, 0, 0, 0.14);
-  }
-
-  .detail-panel .detail-meta .star-button {
-    color: rgba(0, 0, 0, 0.22);
-  }
-
-  .detail-panel .detail-meta .star-button.is-filled {
-    color: var(--gold);
-  }
-
-  .detail-panel .detail-meta .list-row {
-    background: rgba(0, 0, 0, 0.045);
-  }
-
-  .detail-panel .detail-meta .list-row-info p {
-    color: #6b7280;
-  }
-
-  /* Editor labels, toggles, chips, and buttons inherit cream-on-dark colors
-     from the desktop side panel — re-ink them for the white sheet. */
-  .detail-meta .editor-field > span,
-  .detail-meta .editor-toggle > span,
-  .detail-meta .detail-toggle-label {
-    color: #4b5563;
-  }
-
-  .detail-meta .tag-chip {
-    background: rgba(0, 0, 0, 0.05);
-    border-color: rgba(0, 0, 0, 0.1);
-    color: #374151;
-  }
-
-  .detail-meta .ghost-button,
-  .detail-meta .text-action,
-  .detail-meta .icon-button,
-  .detail-meta .list-toggle,
-  .detail-meta .favorite-button {
-    color: #4b5563;
-    border-color: rgba(0, 0, 0, 0.16);
-    background: rgba(0, 0, 0, 0.04);
-  }
-
-  .detail-meta .favorite-button.is-favorite {
-    color: var(--gold);
-    background: var(--gold-soft);
   }
 
   /* Content header retired on mobile — the Shelf tab renders its own head */
@@ -2438,7 +2414,7 @@ select:focus-visible,
   .shelf-chip.is-active {
     background: var(--accent);
     border-color: var(--accent);
-    color: #fff;
+    color: #1a1409;
   }
 
   .shelf-chip.is-clear {
@@ -2521,6 +2497,36 @@ select:focus-visible,
     color: var(--muted);
     font-size: 0.86rem;
     padding: 18px 4px;
+  }
+
+  /* Alphabet fast-scroll rail along the right edge of Find results */
+  .find-rail {
+    position: fixed;
+    right: 1px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 3px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.32);
+  }
+
+  .find-rail button {
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 0.58rem;
+    font-weight: 800;
+    padding: 1px 5px;
+    line-height: 1.3;
+    cursor: pointer;
+  }
+
+  .find-rail button:active {
+    color: var(--accent);
   }
 
   /* ---- Lists tab ---- */

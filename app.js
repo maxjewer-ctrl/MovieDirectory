@@ -1313,6 +1313,7 @@ function renderFindTab() {
 
     const grid = document.createElement("div");
     grid.className = "all-grid";
+    const letterEls = new Map();
     let currentLetter = "";
     for (const movie of matched) {
       const first = (movie.sortTitle[0] || "#").toUpperCase();
@@ -1322,11 +1323,28 @@ function renderFindTab() {
         const h = document.createElement("div");
         h.className = "find-letter";
         h.textContent = letter;
+        letterEls.set(letter, h);
         grid.append(h);
       }
       grid.append(renderCarouselCard(movie));
     }
     results.append(grid);
+
+    // Alphabet fast-scroll rail (only worth showing on a long list)
+    if (letterEls.size >= 5) {
+      const rail = document.createElement("div");
+      rail.className = "find-rail";
+      for (const [letter, el] of letterEls) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = letter;
+        btn.addEventListener("click", () => {
+          el.scrollIntoView({ block: "start", behavior: "smooth" });
+        });
+        rail.append(btn);
+      }
+      results.append(rail);
+    }
   };
 
   // Re-render only the results while typing so the input keeps focus
