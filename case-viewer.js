@@ -126,6 +126,50 @@ function truncate(ctx, text, maxWidth) {
   return t + "…";
 }
 
+function makeBackCoverTexture(movie, img) {
+  const cw = 512, ch = 730;
+  const canvas = document.createElement("canvas");
+  canvas.width = cw;
+  canvas.height = ch;
+  const ctx = canvas.getContext("2d");
+
+  const fmt = String(movie.primaryFormat || "").toLowerCase();
+  const is4k = fmt.includes("4k");
+  const isCriterion = Boolean(movie.criterion);
+  const isSteelbook = Boolean(movie.steelbook);
+
+  const bandColor = is4k ? "#000002"
+    : isCriterion ? "#eaeaea"
+    : isSteelbook ? "#484e5a"
+    : "#02061e";
+
+  const bandH = Math.round(ch * 0.22);
+
+  ctx.fillStyle = bandColor;
+  ctx.fillRect(0, 0, cw, bandH);
+
+  const areaW = cw;
+  const areaH = ch - bandH;
+  const scale = Math.max(areaW / img.naturalWidth, areaH / img.naturalHeight);
+  const drawW = img.naturalWidth * scale;
+  const drawH = img.naturalHeight * scale;
+  const sx = (areaW - drawW) / 2;
+  const sy = (areaH - drawH) / 2;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, bandH, areaW, areaH);
+  ctx.clip();
+  ctx.drawImage(img, sx, bandH + sy, drawW, drawH);
+  ctx.restore();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.flipY = true;
+  tex.anisotropy = renderer?.capabilities.getMaxAnisotropy?.() || 1;
+  return tex;
+}
+
 function makeBackTexture(movie) {
   const cw = 512, ch = 730;
   const canvas = document.createElement("canvas");
@@ -238,14 +282,16 @@ function applyMovieTextures(movie) {
       node.material = mat;
     } else if (matName === "back") {
       if (movie.backCoverUrl) {
-        loadTexture(movie.backCoverUrl).then((tex) => {
-          if (!tex) return;
+        const img = new Image();
+        img.onload = () => {
+          const tex = makeBackCoverTexture(movie, img);
           const mat = node.material.clone();
           mat.map = tex;
           mat.color.set(0xffffff);
           mat.needsUpdate = true;
           node.material = mat;
-        });
+        };
+        img.src = movie.backCoverUrl;
       } else {
         const mat = node.material.clone();
         mat.map = makeBackTexture(movie);
