@@ -126,43 +126,79 @@ function truncate(ctx, text, maxWidth) {
   return t + "…";
 }
 
+function getCaseFormatInfo(movie) {
+  const fmt = String(movie.primaryFormat || "").toLowerCase();
+  if (fmt.includes("4k"))      return { bg: "#060608", fg: "#e8e4dc", accent: "rgba(255,255,255,0.07)", sep: "rgba(255,255,255,0.14)", label: "4K ULTRA HD",               spacing: 5 };
+  if (movie.criterion)         return { bg: "#121212", fg: "#e8e0d0", accent: "rgba(255,255,255,0.04)", sep: "rgba(255,255,255,0.10)", label: "THE CRITERION COLLECTION", spacing: 3 };
+  if (movie.steelbook)         return { bg: "#252c38", fg: "#cdd8e8", accent: "rgba(200,220,255,0.07)", sep: "rgba(200,220,255,0.16)", label: "COLLECTOR'S EDITION",       spacing: 4 };
+  return                              { bg: "#010c38", fg: "#b8d4f8", accent: "rgba(100,150,255,0.10)", sep: "rgba(80,130,230,0.35)",  label: "BLU-RAY DISC",             spacing: 5 };
+}
+
+function drawSpacedText(ctx, text, centerX, centerY, spacing) {
+  const chars = [...text];
+  const widths = chars.map(c => ctx.measureText(c).width);
+  const total = widths.reduce((a, b) => a + b, 0) + spacing * (chars.length - 1);
+  let x = centerX - total / 2;
+  ctx.textAlign = "left";
+  for (let i = 0; i < chars.length; i++) {
+    ctx.fillText(chars[i], x, centerY);
+    x += widths[i] + spacing;
+  }
+}
+
+function drawFormatBand(ctx, cw, bandH, fmt) {
+  ctx.fillStyle = fmt.bg;
+  ctx.fillRect(0, 0, cw, bandH);
+  ctx.fillStyle = fmt.accent;
+  ctx.fillRect(0, 0, cw, 3);
+  ctx.fillStyle = fmt.sep;
+  ctx.fillRect(0, bandH - 1, cw, 1);
+  const fontSize = Math.max(12, Math.round(bandH * 0.24));
+  ctx.fillStyle = fmt.fg;
+  ctx.font = `600 ${fontSize}px sans-serif`;
+  ctx.textBaseline = "middle";
+  drawSpacedText(ctx, fmt.label, cw / 2, bandH / 2, fmt.spacing);
+}
+
+function coverFit(ctx, img, dx, dy, dw, dh) {
+  const scale = Math.max(dw / img.naturalWidth, dh / img.naturalHeight);
+  const w = img.naturalWidth * scale;
+  const h = img.naturalHeight * scale;
+  ctx.drawImage(img, dx + (dw - w) / 2, dy + (dh - h) / 2, w, h);
+}
+
 function makeBackCoverTexture(movie, img) {
   const cw = 512, ch = 730;
   const canvas = document.createElement("canvas");
   canvas.width = cw;
   canvas.height = ch;
   const ctx = canvas.getContext("2d");
-
-  const fmt = String(movie.primaryFormat || "").toLowerCase();
-  const is4k = fmt.includes("4k");
-  const isCriterion = Boolean(movie.criterion);
-  const isSteelbook = Boolean(movie.steelbook);
-
-  const bandColor = is4k ? "#000002"
-    : isCriterion ? "#eaeaea"
-    : isSteelbook ? "#484e5a"
-    : "#02061e";
-
-  const bandH = Math.round(ch * 0.22);
-
-  ctx.fillStyle = bandColor;
-  ctx.fillRect(0, 0, cw, bandH);
-
-  const areaW = cw;
-  const areaH = ch - bandH;
-  const scale = Math.max(areaW / img.naturalWidth, areaH / img.naturalHeight);
-  const drawW = img.naturalWidth * scale;
-  const drawH = img.naturalHeight * scale;
-  const sx = (areaW - drawW) / 2;
-  const sy = (areaH - drawH) / 2;
-
+  const fmt = getCaseFormatInfo(movie);
+  const bandH = Math.round(ch * 0.20);
+  drawFormatBand(ctx, cw, bandH, fmt);
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0, bandH, areaW, areaH);
+  ctx.rect(0, bandH, cw, ch - bandH);
   ctx.clip();
-  ctx.drawImage(img, sx, bandH + sy, drawW, drawH);
+  coverFit(ctx, img, 0, bandH, cw, ch - bandH);
   ctx.restore();
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.flipY = true;
+  tex.anisotropy = renderer?.capabilities.getMaxAnisotropy?.() || 1;
+  return tex;
+}
 
+function makeFrontCoverTexture(movie, img) {
+  const cw = 512, ch = 730;
+  const canvas = document.createElement("canvas");
+  canvas.width = cw;
+  canvas.height = ch;
+  const ctx = canvas.getContext("2d");
+  coverFit(ctx, img, 0, 0, cw, ch);
+  const fmt = getCaseFormatInfo(movie);
+  const bandH = Math.round(ch * 0.10);
+  drawFormatBand(ctx, cw, bandH, fmt);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.flipY = true;
@@ -266,14 +302,21 @@ function applyMovieTextures(movie) {
     const matName = (node.material?.name || "").toLowerCase();
 
     if (matName === "cover" && frontUrl) {
-      loadTexture(frontUrl).then((tex) => {
+      const applyTex = (tex) => {
         if (!tex) return;
         const mat = node.material.clone();
         mat.map = tex;
         mat.color.set(0xffffff);
         mat.needsUpdate = true;
         node.material = mat;
-      });
+      };
+      const img = new Image();
+      img.onload = () => {
+        try { applyTex(makeFrontCoverTexture(movie, img)); }
+        catch (_) { loadTexture(frontUrl).then(applyTex); }
+      };
+      img.onerror = () => loadTexture(frontUrl).then(applyTex);
+      img.src = frontUrl;
     } else if (matName === "spine") {
       const mat = node.material.clone();
       mat.map = spineTex;
