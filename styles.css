@@ -2473,7 +2473,6 @@ select:focus-visible,
     transform: translateX(-50%);
     white-space: nowrap;
     font-family: "Cormorant Garamond", Georgia, serif;
-    font-style: italic;
     font-weight: 600;
     font-size: 2rem;
     letter-spacing: 0.03em;
