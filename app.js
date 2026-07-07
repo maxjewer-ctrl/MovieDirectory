@@ -2297,7 +2297,7 @@ function renderDetailPoster(movie) {
   // action row (discoverable on mobile), enabled when alternate covers can be
   // fetched for this title.
   if (dom.changeCoverBtn) {
-    dom.changeCoverBtn.hidden = !(movie.tmdbId && apiConfig.hasTmdbKey);
+    dom.changeCoverBtn.hidden = !movie.tmdbId;
   }
 
   dom.detailPoster.append(wrapper);
