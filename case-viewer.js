@@ -14,18 +14,8 @@ const TILT_SENS = 0.006;    // radians of pitch per pixel dragged
 const MAX_TILT = 0.5;       // clamp on the pitch axis
 const SPIN_DAMPING = 0.94;  // fling decay toward the auto baseline
 const TILT_RECENTER = 0.06; // how fast pitch eases back to level
-const REST_TILT = -0.05;    // subtle resting pitch for the static phone pose
 const TAP_MOVE = 8;         // px of travel under which a pointer counts as a tap
 const DOUBLE_MS = 320;      // max gap between taps to register a double-tap
-
-// On phones the case is shown static and front-facing (no idle spin) so the
-// preview reads as a poster rather than a rotating gimmick. Matches the CSS
-// breakpoint that switches the detail panel into the compact mobile layout.
-const compactQuery =
-  typeof window !== "undefined" && window.matchMedia
-    ? window.matchMedia("(max-width: 1100px)")
-    : null;
-const isCompact = () => (compactQuery ? compactQuery.matches : false);
 
 let renderer, scene, camera, model, animFrameId;
 let viewerDiv = null;
@@ -442,13 +432,10 @@ function tick() {
         returningToFront = false;
         velY = AUTO_SPEED;
       }
-    } else if (isCompact() || flipped) {
-      // Static hold: front by default, back cover when flipped. On phones this
-      // is the resting state (no idle spin); on desktop we only enter it while
-      // flipped, then resume the idle spin once flipped back to front.
-      const restYaw = flipped ? Math.PI : 0;
-      const restTilt = isCompact() ? REST_TILT : 0;
-      easeToRestYaw(restYaw, restTilt, Math.min(1, f * 0.15));
+    } else if (flipped) {
+      // Double-tap hold: ease to the back cover and stay there until the
+      // next double-tap flips back to the front (then the idle spin resumes).
+      easeToRestYaw(Math.PI, 0, Math.min(1, f * 0.15));
       velY = 0;
       velX = 0;
     } else {

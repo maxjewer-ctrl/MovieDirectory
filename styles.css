@@ -2041,30 +2041,78 @@ select:focus-visible,
     display: none;
   }
 
-  /* Hero section inside the sheet: icon rail (left), title + case (right) */
+  /* Spotlight hero: stage on top, then title, trait icons, actions, editor */
   .detail-content {
     position: relative;
-    display: grid;
-    grid-template-columns: 40px 1fr;
-    gap: 8px 10px;
-    align-items: start;
+    display: flex;
+    flex-direction: column;
     background: transparent;
     border-radius: 0;
-    padding: 6px 0 4px;
+    padding: 0 0 4px;
     box-shadow: none;
   }
 
-  /* Static, front-facing case on phones — no idle rotation. (CSS fallback for
-     when the WebGL viewer isn't active; the WebGL path is frozen in JS.)
-     Double-tapping the cover flips it to show the back. */
+  /* The stage: full-bleed dark pedestal with a brass key light. The case
+     spins here — on a stage the rotation is the exhibit, not a space cost. */
+  .detail-content .detail-poster,
+  .detail-content .detail-poster:has(.detail-poster-img) {
+    order: 0;
+    position: relative;
+    width: calc(100% + 28px);
+    margin: 0 -14px;
+    max-width: none;
+    min-height: unset;
+    aspect-ratio: auto;
+    background:
+      radial-gradient(ellipse 72% 58% at 50% 34%, rgba(201, 150, 75, 0.2), transparent 72%),
+      linear-gradient(180deg, #221d14 0%, #17130e 55%, #121009 100%);
+    padding: 20px 0 36px;
+    overflow: hidden;
+  }
+
+  .detail-content .detail-poster::after {
+    content: "drag to spin · double-tap to flip";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 10px;
+    text-align: center;
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+    color: rgba(240, 234, 224, 0.45);
+    pointer-events: none;
+  }
+
+  .detail-content .detail-poster-scene {
+    padding: 0;
+    min-height: unset;
+  }
+
+  .detail-content .detail-case {
+    --case-width: min(62vw, 244px);
+    margin: 0 auto;
+  }
+
+  .detail-content .case-viewer-container {
+    max-width: min(64vw, 252px);
+  }
+
+  /* CSS-case fallback on the stage: the idle spin returns; a double-tap
+     pauses it and holds the back cover. */
   .detail-content .detail-case-object {
-    animation: none !important;
-    transform: rotateX(4deg) rotateY(-12deg) !important;
-    transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+    animation: detail-case-rotate 14s linear infinite;
   }
 
   .detail-content .detail-case-object.is-flipped {
+    animation: none !important;
     transform: rotateX(4deg) rotateY(168deg) !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .detail-content .detail-case-object {
+      animation: none;
+      transform: rotateX(4deg) rotateY(-14deg);
+    }
   }
 
   /* Sheet grabber — full-width dismiss handle pinned to the sheet's top */
@@ -2097,14 +2145,22 @@ select:focus-visible,
     background: rgba(0, 0, 0, 0.24);
   }
 
-  /* Action buttons stacked under the case, full width */
+  /* Action row under the trait icons */
   .detail-content .hero-actions {
-    grid-column: 1 / -1;
-    grid-row: 3;
-    margin-top: 2px;
+    order: 3;
+    margin-top: 12px;
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .detail-content .hero-actions .full-desc-btn {
+    flex: 1 1 45%;
+    width: auto;
+  }
+
+  .detail-content .hero-actions .full-desc-btn:first-child {
+    flex-basis: 100%;
   }
 
   .detail-content .full-desc-btn {
@@ -2112,14 +2168,15 @@ select:focus-visible,
     color: #1f2937;
   }
 
+  /* Trait icons in a centered row under the title */
   .detail-icon-rail {
+    order: 2;
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
     align-items: center;
-    grid-column: 1;
-    grid-row: 1 / span 2;
-    padding-top: 2px;
+    padding-top: 10px;
   }
 
   .detail-icon-rail .rail-icon {
@@ -2144,44 +2201,41 @@ select:focus-visible,
     display: flex;
   }
 
-  /* Title above the case, inside the white card */
+  /* Title centered under the stage */
   .detail-hero-title {
+    order: 1;
     display: block;
-    grid-column: 2;
-    grid-row: 1;
-    margin: 0;
+    margin: 16px 10px 0;
     color: #161616;
+    text-align: center;
     font-family: "Cormorant Garamond", Georgia, serif;
-    font-size: clamp(1.3rem, 5vw, 1.8rem);
+    font-size: clamp(1.5rem, 6.4vw, 2.1rem);
     font-weight: 600;
-    line-height: 1;
+    line-height: 1.05;
     letter-spacing: -0.02em;
     text-wrap: balance;
-  }
-
-  .detail-content .detail-poster,
-  .detail-content .detail-poster:has(.detail-poster-img) {
-    grid-column: 2;
-    grid-row: 2;
-    width: 100%;
-    max-width: 168px;
-    margin: 0 auto;
-    min-height: unset;
-    aspect-ratio: 0.72;
-    background: #fff;
-    padding: 0;
-  }
-
-  .case-viewer-container {
-    max-width: 100%;
   }
 
   /* The editor returns on mobile: it scrolls below the hero inside the
      Spotlight sheet (rating, watch status, notes, value, special features). */
   .detail-meta {
     display: block;
-    grid-column: 1 / -1;
-    padding-top: 10px;
+    order: 4;
+    padding-top: 12px;
+  }
+
+  /* The hero title already names the movie — drop the duplicate heading */
+  .detail-meta .detail-heading-row {
+    display: none;
+  }
+
+  .detail-meta .detail-subtitle {
+    text-align: center;
+    margin: 0 0 8px;
+  }
+
+  .detail-meta .detail-chip-row {
+    justify-content: center;
   }
 
   .detail-meta,
