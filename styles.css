@@ -1940,36 +1940,9 @@ select:focus-visible,
     display: inline-flex;
   }
 
-  /* "Expand" tab fixed to the left edge, reading as a pull-tab for the
-     drawer (rounded rectangle connected to the screen edge). */
+  /* Drawer retired on mobile: navigation lives in the bottom tab bar now.
+     The drawer markup stays for desktop-width fallbacks but has no opener. */
   .sidebar-toggle-button {
-    position: fixed;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 115;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px 7px;
-    border: 1px solid var(--sidebar-border);
-    border-left: 0;
-    border-radius: 0 14px 14px 0;
-    background: var(--sidebar-bg);
-    color: var(--sidebar-heading);
-    box-shadow: 3px 3px 14px rgba(0, 0, 0, 0.32);
-  }
-
-  .sidebar-toggle-label {
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-    letter-spacing: 0.16em;
-    font-size: 0.76rem;
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-
-  .sidebar-toggle-button.is-open {
     display: none;
   }
 
@@ -2003,35 +1976,82 @@ select:focus-visible,
     padding-right: 0;
   }
 
-  /* Detail panel: compact hero, docked flush at the top. Opaque background so
-     carousels scroll cleanly behind it instead of bleeding through a
-     semi-transparent gutter around the card. */
+  /* Spotlight sheet: the detail panel becomes a full-height bottom sheet.
+     Hidden until a title is tapped; slides up over the tab bar and dismisses
+     via the grabber or backdrop. Replaces the old sticky hero entirely. */
   .detail-panel {
     order: 0;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    padding: 8px 12px 10px;
-    margin: 0 -12px;
-    background: var(--bg);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 8vh;
+    top: 8dvh;
+    z-index: 108;
+    margin: 0;
+    padding: 0 14px 28px;
+    background: #fff;
     border: 0;
-    border-bottom: 1px solid var(--line);
-    box-shadow: 0 8px 16px rgba(36, 24, 15, 0.16);
-    max-height: 72vh;
-    overflow: visible;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.35);
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    transform: translateY(105%);
+    transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1);
+    visibility: hidden;
   }
 
-  /* White hero card: icon rail (left) spanning title + smaller case (right) */
+  .detail-panel.is-open {
+    transform: translateY(0);
+    visibility: visible;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .detail-panel {
+      transition: none;
+    }
+  }
+
+  /* Backdrop behind the open sheet */
+  .sheet-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 104;
+    background: rgba(10, 8, 5, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 280ms ease;
+  }
+
+  .sheet-backdrop.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* No scroll bleed under an open sheet */
+  body.sheet-locked {
+    overflow: hidden;
+  }
+
+  /* The "choose a title" empty state never applies inside the sheet */
+  .detail-empty {
+    display: none;
+  }
+
+  /* Hero section inside the sheet: icon rail (left), title + case (right) */
   .detail-content {
     position: relative;
     display: grid;
     grid-template-columns: 40px 1fr;
     gap: 8px 10px;
     align-items: start;
-    background: #fff;
-    border-radius: 18px;
-    padding: 12px 12px 26px;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+    background: transparent;
+    border-radius: 0;
+    padding: 6px 0 4px;
+    box-shadow: none;
   }
 
   /* Static, front-facing case on phones — no idle rotation. (CSS fallback for
@@ -2047,24 +2067,21 @@ select:focus-visible,
     transform: rotateX(4deg) rotateY(168deg) !important;
   }
 
-  /* Collapse / expand handle — a full-width grabber bar along the bottom edge
-     of the hero (reads as a pull-to-collapse handle, big tap target, and no
-     longer covers the title in the top-right corner). */
+  /* Sheet grabber — full-width dismiss handle pinned to the sheet's top */
   .hero-collapse {
     display: flex;
     align-items: center;
     justify-content: center;
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 2;
-    width: 100%;
-    height: 22px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    width: calc(100% + 28px);
+    margin: 0 -14px;
+    height: 26px;
     padding: 0;
     border: 0;
-    border-radius: 0 0 18px 18px;
-    background: rgba(0, 0, 0, 0.04);
+    border-radius: 22px 22px 0 0;
+    background: #fff;
     color: transparent;
     font-size: 0;
     line-height: 1;
@@ -2074,22 +2091,10 @@ select:focus-visible,
   /* The grabber pill itself */
   .hero-collapse::before {
     content: "";
-    width: 38px;
+    width: 40px;
     height: 4px;
     border-radius: 999px;
-    background: rgba(0, 0, 0, 0.22);
-  }
-
-  /* Collapsed hero: hide the case + rail, leaving just the title bar */
-  .detail-content.hero-collapsed {
-    grid-template-columns: 1fr;
-    padding: 10px 14px 22px;
-  }
-
-  .detail-content.hero-collapsed .detail-icon-rail,
-  .detail-content.hero-collapsed .detail-poster,
-  .detail-content.hero-collapsed .hero-actions {
-    display: none;
+    background: rgba(0, 0, 0, 0.24);
   }
 
   /* Action buttons stacked under the case, full width */
@@ -2105,12 +2110,6 @@ select:focus-visible,
   .detail-content .full-desc-btn {
     background: rgba(0, 0, 0, 0.06);
     color: #1f2937;
-  }
-
-  .detail-content.hero-collapsed .detail-hero-title {
-    grid-column: 1;
-    grid-row: 1;
-    font-size: 1.25rem;
   }
 
   .detail-icon-rail {
@@ -2177,25 +2176,97 @@ select:focus-visible,
     max-width: 100%;
   }
 
-  /* No text block under the image — the synopsis lives on the case back. */
+  /* The editor returns on mobile: it scrolls below the hero inside the
+     Spotlight sheet (rating, watch status, notes, value, special features). */
   .detail-meta {
-    display: none;
+    display: block;
+    grid-column: 1 / -1;
+    padding-top: 10px;
   }
 
-  /* Compact content header — keep only a small visible-title count */
+  .detail-meta,
+  .detail-meta h2,
+  .detail-meta h3,
+  .detail-meta h4,
+  .detail-meta dd {
+    color: #1f2430;
+  }
+
+  .detail-meta .detail-subtitle,
+  .detail-meta .detail-section,
+  .detail-meta .detail-facts dt,
+  .detail-meta .save-status {
+    color: #6b7280;
+  }
+
+  .detail-meta .detail-block {
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+
+  /* High-specificity: the desktop panel's cream-on-dark field rules
+     (.detail-panel .editor-field select, .detail-panel textarea, …) are
+     defined after this block, so these must outrank them. */
+  .detail-panel .detail-meta input,
+  .detail-panel .detail-meta select,
+  .detail-panel .detail-meta .editor-field select,
+  .detail-panel .detail-meta textarea {
+    background: #fff;
+    color: #1f2430;
+    border: 1px solid rgba(0, 0, 0, 0.14);
+  }
+
+  .detail-panel .detail-meta .star-button {
+    color: rgba(0, 0, 0, 0.22);
+  }
+
+  .detail-panel .detail-meta .star-button.is-filled {
+    color: var(--gold);
+  }
+
+  .detail-panel .detail-meta .list-row {
+    background: rgba(0, 0, 0, 0.045);
+  }
+
+  .detail-panel .detail-meta .list-row-info p {
+    color: #6b7280;
+  }
+
+  /* Editor labels, toggles, chips, and buttons inherit cream-on-dark colors
+     from the desktop side panel — re-ink them for the white sheet. */
+  .detail-meta .editor-field > span,
+  .detail-meta .editor-toggle > span,
+  .detail-meta .detail-toggle-label {
+    color: #4b5563;
+  }
+
+  .detail-meta .tag-chip {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #374151;
+  }
+
+  .detail-meta .ghost-button,
+  .detail-meta .text-action,
+  .detail-meta .icon-button,
+  .detail-meta .list-toggle,
+  .detail-meta .favorite-button {
+    color: #4b5563;
+    border-color: rgba(0, 0, 0, 0.16);
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  .detail-meta .favorite-button.is-favorite {
+    color: var(--gold);
+    background: var(--gold-soft);
+  }
+
+  /* Content header retired on mobile — the Shelf tab renders its own head */
   .content-header {
-    margin: 2px 0 0;
-    gap: 2px;
-  }
-
-  .content-header .context-label,
-  #results-heading {
     display: none;
-  }
-
-  .results-summary {
-    font-size: 0.72rem;
-    margin: 0;
   }
 
   .main-stage {
@@ -2229,11 +2300,296 @@ select:focus-visible,
     font-size: 0.68rem;
     margin-top: 5px;
   }
+
+  /* Room for the fixed tab bar */
+  .main-stage {
+    padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Modals stack above the Spotlight sheet (essay, playlist, cover picker) */
+  .modal {
+    z-index: 140;
+  }
+
+  /* ---- Bottom tab bar ---- */
+  .mobile-tabbar {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 102;
+    padding: 6px 8px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--panel-strong);
+    border-top: 1px solid var(--line);
+    backdrop-filter: blur(14px);
+  }
+
+  .mtab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 0 2px;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 12px;
+  }
+
+  .mtab svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .mtab span {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .mtab.is-active {
+    color: var(--accent);
+  }
+
+  /* ---- Shelf filter chips ---- */
+  .shelf-chips {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    padding: 2px 2px 8px;
+    margin: 0 0 4px;
+    scrollbar-width: none;
+  }
+
+  .shelf-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .shelf-chip {
+    flex: 0 0 auto;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--chip-border);
+    background: var(--chip-bg);
+    color: var(--text);
+    font-size: 0.76rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .shelf-chip.is-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .shelf-chip.is-clear {
+    background: var(--accent-soft);
+    border-color: transparent;
+    color: var(--accent);
+  }
+
+  /* ---- Shelf header row (title + add button) ---- */
+  .shelf-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 2px 0 8px;
+  }
+
+  .shelf-head h2 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+
+  .shelf-head .shelf-count {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-left: 8px;
+  }
+
+  .shelf-add-btn {
+    border: 0;
+    border-radius: 999px;
+    padding: 8px 14px;
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* ---- Find tab ---- */
+  .find-search {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--text);
+    font-size: 0.95rem;
+    margin: 4px 0 10px;
+  }
+
+  .find-search:focus {
+    outline: none;
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-shadow);
+  }
+
+  .find-chips {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    padding: 0 2px 10px;
+    scrollbar-width: none;
+  }
+
+  .find-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .find-letter {
+    grid-column: 1 / -1;
+    margin: 8px 0 0;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .find-empty {
+    color: var(--muted);
+    font-size: 0.86rem;
+    padding: 18px 4px;
+  }
+
+  /* ---- Lists tab ---- */
+  .mtab-section {
+    margin: 6px 0 18px;
+  }
+
+  .mtab-section > h3 {
+    margin: 0 0 8px;
+    font-size: 1.05rem;
+  }
+
+  .mtab-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .mtab-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    padding: 12px 14px;
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    background: var(--card-bg);
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .mtab-row .row-label {
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+
+  .mtab-row .row-sub {
+    display: block;
+    font-weight: 500;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .mtab-row .row-count {
+    flex: 0 0 auto;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  .mtab-row.is-active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  /* ---- Stats tab ---- */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 6px 0 18px;
+  }
+
+  .stat-tile {
+    background: var(--stat-bg);
+    border: 1px solid var(--stat-border);
+    border-radius: 14px;
+    padding: 12px 14px;
+  }
+
+  .stat-tile .stat-value {
+    font-size: 1.3rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat-tile .stat-label {
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .settings-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .settings-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  .settings-grid select {
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--text);
+    font-size: 0.9rem;
+  }
 }
 
 /* Mobile view controls hidden on desktop */
 .mobile-view-controls {
   display: none;
+}
+
+/* Mobile tab bar and sheet backdrop exist only on mobile widths */
+@media (min-width: 1101px) {
+  .mobile-tabbar,
+  .sheet-backdrop {
+    display: none;
+  }
 }
 
 /* Sidebar selects for mobile controls */
