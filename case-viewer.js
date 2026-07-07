@@ -126,38 +126,109 @@ function truncate(ctx, text, maxWidth) {
   return t + "…";
 }
 
-function getCaseFormatInfo(movie) {
+function getCaseType(movie) {
   const fmt = String(movie.primaryFormat || "").toLowerCase();
-  if (fmt.includes("4k"))      return { bg: "#060608", fg: "#e8e4dc", accent: "rgba(255,255,255,0.07)", sep: "rgba(255,255,255,0.14)", label: "4K ULTRA HD",               spacing: 5 };
-  if (movie.criterion)         return { bg: "#121212", fg: "#e8e0d0", accent: "rgba(255,255,255,0.04)", sep: "rgba(255,255,255,0.10)", label: "THE CRITERION COLLECTION", spacing: 3 };
-  if (movie.steelbook)         return { bg: "#252c38", fg: "#cdd8e8", accent: "rgba(200,220,255,0.07)", sep: "rgba(200,220,255,0.16)", label: "COLLECTOR'S EDITION",       spacing: 4 };
-  return                              { bg: "#010c38", fg: "#b8d4f8", accent: "rgba(100,150,255,0.10)", sep: "rgba(80,130,230,0.35)",  label: "BLU-RAY DISC",             spacing: 5 };
+  if (fmt.includes("4k"))  return "4k";
+  if (movie.criterion)      return "criterion";
+  if (movie.steelbook)      return "steelbook";
+  return "bluray";
 }
 
-function drawSpacedText(ctx, text, centerX, centerY, spacing) {
-  const chars = [...text];
-  const widths = chars.map(c => ctx.measureText(c).width);
-  const total = widths.reduce((a, b) => a + b, 0) + spacing * (chars.length - 1);
-  let x = centerX - total / 2;
-  ctx.textAlign = "left";
-  for (let i = 0; i < chars.length; i++) {
-    ctx.fillText(chars[i], x, centerY);
-    x += widths[i] + spacing;
-  }
-}
-
-function drawFormatBand(ctx, cw, bandH, fmt) {
-  ctx.fillStyle = fmt.bg;
+// Draw the Blu-ray disc logo: white oval with dark "BD", then "Blu-ray Disc™" text.
+function drawBlurayBand(ctx, cw, bandH) {
+  ctx.fillStyle = "#00187a";
   ctx.fillRect(0, 0, cw, bandH);
-  ctx.fillStyle = fmt.accent;
-  ctx.fillRect(0, 0, cw, 3);
-  ctx.fillStyle = fmt.sep;
+  ctx.fillStyle = "rgba(140,180,255,0.25)";
   ctx.fillRect(0, bandH - 1, cw, 1);
-  const fontSize = Math.max(12, Math.round(bandH * 0.24));
-  ctx.fillStyle = fmt.fg;
-  ctx.font = `600 ${fontSize}px sans-serif`;
+
+  const cy = bandH / 2;
+  const s = bandH / 72;            // scale relative to reference band height
+  const ovalRx = 24 * s, ovalRy = 18 * s;
+  const logoW = ovalRx * 2 + 10 * s + ctx.measureText("Blu-ray Disc™").width;
+  // (rough pre-measure; we'll recalculate below)
+  const labelFont = `bold ${Math.round(17 * s)}px sans-serif`;
+  ctx.font = labelFont;
+  const labelW = ctx.measureText("Blu-ray Disc™").width;
+  const totalW = ovalRx * 2 + 8 * s + labelW;
+  const startX = cw / 2 - totalW / 2 + ovalRx;
+
+  // White oval
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(startX, cy, ovalRx, ovalRy, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.97)";
+  ctx.fill();
+
+  // "BD" inside oval
+  ctx.fillStyle = "#00187a";
+  ctx.font = `bold ${Math.round(13 * s)}px sans-serif`;
+  ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  drawSpacedText(ctx, fmt.label, cw / 2, bandH / 2, fmt.spacing);
+  ctx.fillText("BD", startX, cy + 1);
+  ctx.restore();
+
+  // "Blu-ray Disc™" to the right
+  ctx.fillStyle = "rgba(255,255,255,0.97)";
+  ctx.font = labelFont;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText("Blu-ray Disc™", startX + ovalRx + 8 * s, cy);
+}
+
+// Draw the 4K Ultra HD logo: large "4K" left, stacked "ULTRA / HD™" right.
+function draw4KBand(ctx, cw, bandH) {
+  ctx.fillStyle = "#060608";
+  ctx.fillRect(0, 0, cw, bandH);
+  ctx.fillStyle = "rgba(255,255,255,0.12)";
+  ctx.fillRect(0, bandH - 1, cw, 1);
+
+  const cy = bandH / 2;
+  const s = bandH / 80;
+  const bigSize = Math.round(38 * s);
+  const smSize  = Math.round(15 * s);
+  const gap = 5 * s;
+
+  ctx.fillStyle = "rgba(255,255,255,0.97)";
+  ctx.textBaseline = "middle";
+
+  ctx.font = `bold ${bigSize}px sans-serif`;
+  const fourKW = ctx.measureText("4K").width;
+
+  ctx.font = `bold ${smSize}px sans-serif`;
+  const ultraW = ctx.measureText("ULTRA").width;
+  const hdW    = ctx.measureText("HD™").width;
+  const rightW = Math.max(ultraW, hdW);
+
+  const totalW = fourKW + gap + rightW;
+  const startX = cw / 2 - totalW / 2;
+
+  ctx.font = `bold ${bigSize}px sans-serif`;
+  ctx.textAlign = "left";
+  ctx.fillText("4K", startX, cy);
+
+  ctx.font = `bold ${smSize}px sans-serif`;
+  const rx = startX + fourKW + gap;
+  ctx.fillText("ULTRA", rx, cy - smSize * 0.6);
+  ctx.fillText("HD™",   rx, cy + smSize * 0.6);
+}
+
+function drawSteelbookBand(ctx, cw, bandH) {
+  ctx.fillStyle = "#1c2230";
+  ctx.fillRect(0, 0, cw, bandH);
+  ctx.fillStyle = "rgba(180,200,240,0.14)";
+  ctx.fillRect(0, bandH - 1, cw, 1);
+  const s = bandH / 70;
+  ctx.fillStyle = "rgba(210,225,248,0.92)";
+  ctx.font = `600 ${Math.round(15 * s)}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("COLLECTOR'S EDITION", cw / 2, bandH / 2);
+}
+
+function drawFormatBand(ctx, cw, bandH, type) {
+  if (type === "4k")        draw4KBand(ctx, cw, bandH);
+  else if (type === "bluray") drawBlurayBand(ctx, cw, bandH);
+  else                        drawSteelbookBand(ctx, cw, bandH);
 }
 
 function coverFit(ctx, img, dx, dy, dw, dh) {
@@ -173,15 +244,19 @@ function makeBackCoverTexture(movie, img) {
   canvas.width = cw;
   canvas.height = ch;
   const ctx = canvas.getContext("2d");
-  const fmt = getCaseFormatInfo(movie);
+  const type = getCaseType(movie);
   const bandH = Math.round(ch * 0.20);
-  drawFormatBand(ctx, cw, bandH, fmt);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, bandH, cw, ch - bandH);
-  ctx.clip();
-  coverFit(ctx, img, 0, bandH, cw, ch - bandH);
-  ctx.restore();
+  if (type !== "criterion") {
+    drawFormatBand(ctx, cw, bandH, type);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, bandH, cw, ch - bandH);
+    ctx.clip();
+    coverFit(ctx, img, 0, bandH, cw, ch - bandH);
+    ctx.restore();
+  } else {
+    coverFit(ctx, img, 0, 0, cw, ch);
+  }
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.flipY = true;
@@ -196,9 +271,11 @@ function makeFrontCoverTexture(movie, img) {
   canvas.height = ch;
   const ctx = canvas.getContext("2d");
   coverFit(ctx, img, 0, 0, cw, ch);
-  const fmt = getCaseFormatInfo(movie);
-  const bandH = Math.round(ch * 0.10);
-  drawFormatBand(ctx, cw, bandH, fmt);
+  const type = getCaseType(movie);
+  if (type !== "criterion") {
+    const bandH = type === "4k" ? Math.round(ch * 0.11) : Math.round(ch * 0.09);
+    drawFormatBand(ctx, cw, bandH, type);
+  }
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.flipY = true;
