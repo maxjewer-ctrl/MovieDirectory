@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=20260708-backview">
+  <link rel="stylesheet" href="./styles.css?v=20260708-layout2">
 </head>
 <body>
   <div class="app-shell">
@@ -184,9 +184,19 @@
       </div>
 
       <div id="detail-content" class="detail-content" hidden>
-        <div id="detail-icon-rail" class="detail-icon-rail"></div>
-        <p id="detail-hero-title" class="detail-hero-title"></p>
+        <!-- Quick overview shown at top on mobile before the 3D viewer -->
+        <div id="detail-quick-info" class="detail-quick-info" hidden></div>
+
+        <!-- 3D case viewer -->
         <div id="detail-poster" class="detail-poster"></div>
+
+        <!-- Action icon strip (watch · desc · playlist · cover) below the viewer -->
+        <div id="detail-icon-rail" class="detail-icon-rail"></div>
+
+        <!-- Title for desktop panel -->
+        <p id="detail-hero-title" class="detail-hero-title"></p>
+
+        <!-- Full-width action buttons — desktop only, hidden on mobile -->
         <div class="hero-actions">
           <button id="full-desc-btn" class="full-desc-btn" type="button">📖 Full description</button>
           <button id="add-playlist-btn" class="full-desc-btn" type="button">➕ Add to playlist</button>

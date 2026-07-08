@@ -2118,11 +2118,47 @@ select:focus-visible,
     box-shadow: none;
   }
 
-  /* The stage: full-bleed dark pedestal with a brass key light. The case
-     spins here — on a stage the rotation is the exhibit, not a space cost. */
+  /* Quick overview block at the very top, before the 3D viewer */
+  .detail-quick-info {
+    order: 0;
+    display: block !important;
+    padding: 18px 16px 14px;
+  }
+
+  .detail-quick-title {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: clamp(1.45rem, 6vw, 2rem);
+    font-weight: 600;
+    color: #f0eae2;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0 0 6px;
+  }
+
+  .detail-quick-meta {
+    font-size: 0.73rem;
+    color: rgba(240, 234, 226, 0.5);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0 0 10px;
+  }
+
+  .detail-quick-overview {
+    font-size: 0.85rem;
+    line-height: 1.58;
+    color: rgba(240, 234, 226, 0.72);
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 0;
+  }
+
+  /* The stage: full-bleed dark pedestal — case viewer sits here */
   .detail-content .detail-poster,
   .detail-content .detail-poster:has(.detail-poster-img) {
-    order: 0;
+    order: 1;
     position: relative;
     width: calc(100% + 28px);
     margin: 0 -14px;
@@ -2132,21 +2168,8 @@ select:focus-visible,
     background:
       radial-gradient(ellipse 72% 58% at 50% 34%, rgba(201, 150, 75, 0.2), transparent 72%),
       linear-gradient(180deg, #221d14 0%, #17130e 55%, #121009 100%);
-    padding: 20px 0 36px;
+    padding: 20px 0 0;
     overflow: hidden;
-  }
-
-  .detail-content .detail-poster::after {
-    content: "drag to spin · double-tap to flip";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 10px;
-    text-align: center;
-    font-size: 0.66rem;
-    letter-spacing: 0.04em;
-    color: rgba(240, 234, 224, 0.45);
-    pointer-events: none;
   }
 
   .detail-content .detail-poster-scene {
@@ -2234,82 +2257,59 @@ select:focus-visible,
     background: rgba(255, 255, 255, 0.14);
   }
 
-  /* Action row under the trait icons */
+  /* Hero-actions (full-width text buttons) — desktop only */
   .detail-content .hero-actions {
-    order: 3;
-    margin-top: 12px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    display: none;
   }
 
-  .detail-content .hero-actions .full-desc-btn {
-    flex: 1 1 45%;
-    width: auto;
-  }
-
-  .detail-content .hero-actions .full-desc-btn:first-child {
-    flex-basis: 100%;
-  }
-
-  .detail-content .full-desc-btn {
-    background: rgba(255, 255, 255, 0.08);
-    color: #ece6da;
-  }
-
-  /* Trait icons in a centered row under the title */
+  /* Action icon strip — extends the dark stage visual, sits just below viewer */
   .detail-icon-rail {
     order: 2;
     display: flex;
     flex-direction: row;
     justify-content: center;
-    gap: 10px;
+    gap: 16px;
     align-items: center;
-    padding-top: 10px;
+    padding: 16px 14px 20px;
+    background: linear-gradient(180deg, #17130e 0%, #121009 100%);
+    width: calc(100% + 28px);
+    margin: 0 -14px;
   }
 
   .detail-icon-rail .rail-icon {
-    width: 40px;
-    height: 40px;
-    background: rgba(255, 255, 255, 0.08);
-    color: #ece6da;
-    font-size: 1.05rem;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(240, 234, 224, 0.85);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
   }
 
-  .detail-icon-rail .rail-icon.is-active {
-    background: var(--gold-soft);
-    color: var(--gold);
+  .detail-icon-rail .rail-icon:active {
+    background: rgba(255, 255, 255, 0.18);
   }
 
   .detail-icon-rail .rail-icon.is-watched {
-    background: rgba(34, 197, 94, 0.9);
+    background: rgba(34, 197, 94, 0.85);
+    border-color: rgba(34, 197, 94, 0.4);
     color: #fff;
   }
 
-  .rail-tag {
-    display: flex;
-  }
-
-  /* Title centered under the stage */
+  /* Title — hidden on mobile (shown in quick-info instead) */
   .detail-hero-title {
-    order: 1;
-    display: block;
-    margin: 16px 10px 0;
-    color: #f0eae2;
-    text-align: center;
-    font-family: "Cormorant Garamond", Georgia, serif;
-    font-size: clamp(1.5rem, 6.4vw, 2.1rem);
-    font-weight: 600;
-    line-height: 1.05;
-    letter-spacing: -0.02em;
-    text-wrap: balance;
+    display: none;
   }
 
-  /* The editor returns on mobile: it scrolls below the hero inside the
-     Spotlight sheet (rating, watch status, notes, value, special features). */
+  /* Settings section */
   .detail-meta {
     display: block;
-    order: 4;
+    order: 3;
     padding-top: 12px;
   }
 
@@ -2707,7 +2707,8 @@ select:focus-visible,
 @media (min-width: 1101px) {
   .mobile-tabbar,
   .sheet-backdrop,
-  .detail-close-bottom {
+  .detail-close-bottom,
+  .detail-quick-info {
     display: none;
   }
 }

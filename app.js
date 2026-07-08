@@ -144,6 +144,7 @@ const dom = {
   viewSelectM: document.querySelector("#view-select-m"),
   addMovieButtonM: document.querySelector("#add-movie-button-m"),
   detailIconRail: document.querySelector("#detail-icon-rail"),
+  detailQuickInfo: document.querySelector("#detail-quick-info"),
   detailHeroTitle: document.querySelector("#detail-hero-title"),
   heroCollapse: document.querySelector("#hero-collapse"),
   detailCloseBottom: document.querySelector("#detail-close-bottom"),
@@ -1908,6 +1909,20 @@ function renderDetail() {
   renderDetailPoster(movie);
   renderDetailIconRail(movie);
   if (dom.detailHeroTitle) dom.detailHeroTitle.textContent = movie.title;
+  if (dom.detailQuickInfo) {
+    const metaParts = [
+      movie.year,
+      movie.director,
+      movie.runtime ? `${movie.runtime} min` : null,
+      movie.primaryFormat,
+    ].filter(Boolean).join(" · ");
+    dom.detailQuickInfo.hidden = false;
+    dom.detailQuickInfo.innerHTML = `
+      <p class="detail-quick-title">${escapeHtml(movie.title)}</p>
+      ${metaParts ? `<p class="detail-quick-meta">${escapeHtml(metaParts)}</p>` : ""}
+      ${movie.overview ? `<p class="detail-quick-overview">${escapeHtml(movie.overview)}</p>` : ""}
+    `;
+  }
   dom.detailSection.textContent = movie.subsection || movie.section;
   dom.detailTitle.textContent = movie.title;
   dom.detailSubtitle.textContent = movie.directorCollection
@@ -2181,33 +2196,29 @@ function setMobileTab(tab) {
   window.scrollTo({ top: 0, behavior: "instant" });
 }
 
+function makeRailIcon(ariaLabel, svgInner) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "rail-icon";
+  btn.setAttribute("aria-label", ariaLabel);
+  btn.title = ariaLabel;
+  btn.innerHTML = `<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${svgInner}</svg>`;
+  return btn;
+}
+
 function renderDetailIconRail(movie) {
   const rail = dom.detailIconRail;
   if (!rail) return;
   rail.innerHTML = "";
 
-  // Favorite
-  const fav = document.createElement("button");
-  fav.type = "button";
-  fav.className = "rail-icon";
-  const isFav = appState.favorites.has(movie.id);
-  fav.classList.toggle("is-active", isFav);
-  fav.textContent = isFav ? "★" : "☆";
-  fav.title = isFav ? "Remove favorite" : "Add favorite";
-  fav.setAttribute("aria-label", fav.title);
-  fav.addEventListener("click", () => {
-    toggleFavorite(movie.id);
-    renderDetailIconRail(movie);
-  });
-
-  // Watched toggle (icon only — no status text)
+  // Watched toggle
+  const watched = movie.watchStatus === "Watched";
   const watch = document.createElement("button");
   watch.type = "button";
   watch.className = "rail-icon";
-  const watched = movie.watchStatus === "Watched";
   watch.classList.toggle("is-watched", watched);
   updateWatchToggle(watch, movie.watchStatus);
-  watch.setAttribute("aria-label", watched ? "Watched" : "Mark watched");
+  watch.setAttribute("aria-label", watched ? "Watched — tap to unmark" : "Mark as watched");
   watch.addEventListener("click", () => {
     const next = watched ? "Unwatched" : "Watched";
     movie.watchStatus = next;
@@ -2215,7 +2226,28 @@ function renderDetailIconRail(movie) {
     renderDetailIconRail(getMovieById(movie.id) || movie);
   });
 
-  rail.append(fav, watch);
+  // Full description (book icon)
+  const desc = makeRailIcon("Full description",
+    `<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>`
+  );
+  desc.addEventListener("click", openEssayModal);
+
+  // Add to playlist (plus icon)
+  const playlist = makeRailIcon("Add to playlist",
+    `<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>`
+  );
+  playlist.addEventListener("click", openPlaylistModal);
+
+  rail.append(watch, desc, playlist);
+
+  // Change cover — only when a TMDB ID exists
+  if (movie.tmdbId) {
+    const cover = makeRailIcon("Change cover art",
+      `<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>`
+    );
+    cover.addEventListener("click", () => openPosterCarousel(movie));
+    rail.append(cover);
+  }
 }
 
 function renderDetailPoster(movie) {
