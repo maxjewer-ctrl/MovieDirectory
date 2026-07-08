@@ -1617,6 +1617,13 @@ function carouselRank(label) {
   return _carouselRank.get(label);
 }
 
+// Stable-per-session random rank for movies within a carousel.
+const _movieCarouselRank = new Map();
+function movieCarouselRank(movieId) {
+  if (!_movieCarouselRank.has(movieId)) _movieCarouselRank.set(movieId, Math.random());
+  return _movieCarouselRank.get(movieId);
+}
+
 function renderCarouselSection(section) {
   const wrap = document.createElement("section");
   wrap.className = section.isPlaylist ? "carousel-section carousel-playlist" : "carousel-section";
@@ -1659,10 +1666,13 @@ function renderCarouselSection(section) {
 
   const track = document.createElement("div");
   track.className = "carousel-track";
-  // Cap cards per carousel to keep the DOM light (thousands of posters froze
-  // the page). Full lists remain reachable via "All Movies A-Z → See all".
+  // Cap cards per carousel to keep the DOM light. "All Movies A-Z" stays
+  // alphabetical; all other carousels are shuffled (stable within a page load).
   const CAROUSEL_CAP = 24;
-  for (const movie of section.movies.slice(0, CAROUSEL_CAP)) track.append(renderCarouselCard(movie));
+  const displayMovies = section.seeAll
+    ? section.movies
+    : [...section.movies].sort((a, b) => movieCarouselRank(a.id) - movieCarouselRank(b.id));
+  for (const movie of displayMovies.slice(0, CAROUSEL_CAP)) track.append(renderCarouselCard(movie));
   wrap.append(track);
   dom.collectionContainer.append(wrap);
 }
