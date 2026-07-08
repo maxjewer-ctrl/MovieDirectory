@@ -1629,6 +1629,21 @@ function carouselRank(label) {
   return _carouselRank.get(label);
 }
 
+// Shuffle the movies inside a carousel so it isn't the same lineup every time,
+// but keep that order stable within a page load (re-renders during a session
+// shouldn't make the row jump around). Each (carousel, movie) pair gets a
+// random rank the first time it's seen; the map is fresh on every reload.
+const _movieShuffleRank = new Map();
+function shuffleCarouselMovies(label, movieList) {
+  return [...movieList].sort((a, b) => {
+    const keyA = `${label}::${a.id}`;
+    const keyB = `${label}::${b.id}`;
+    if (!_movieShuffleRank.has(keyA)) _movieShuffleRank.set(keyA, Math.random());
+    if (!_movieShuffleRank.has(keyB)) _movieShuffleRank.set(keyB, Math.random());
+    return _movieShuffleRank.get(keyA) - _movieShuffleRank.get(keyB);
+  });
+}
+
 function renderCarouselSection(section) {
   const wrap = document.createElement("section");
   wrap.className = section.isPlaylist ? "carousel-section carousel-playlist" : "carousel-section";
@@ -1674,7 +1689,12 @@ function renderCarouselSection(section) {
   // Cap cards per carousel to keep the DOM light (thousands of posters froze
   // the page). Full lists remain reachable via "All Movies A-Z → See all".
   const CAROUSEL_CAP = 24;
-  for (const movie of section.movies.slice(0, CAROUSEL_CAP)) track.append(renderCarouselCard(movie));
+  // Randomize the lineup so rows vary between visits — except "All Movies A-Z",
+  // which stays alphabetical.
+  const orderedMovies = section.seeAll
+    ? section.movies
+    : shuffleCarouselMovies(section.label, section.movies);
+  for (const movie of orderedMovies.slice(0, CAROUSEL_CAP)) track.append(renderCarouselCard(movie));
   wrap.append(track);
   dom.collectionContainer.append(wrap);
 }
