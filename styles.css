@@ -2976,6 +2976,114 @@ select:focus-visible,
   width: auto;
 }
 
+/* "More from this director" — titles not yet in the collection */
+.missing-works {
+  margin-top: 34px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.missing-works-head {
+  margin-bottom: 16px;
+}
+
+.missing-works-head h3 {
+  margin: 0;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.missing-works-sub {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.missing-works-status {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.missing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 16px;
+}
+
+.missing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0.92;
+}
+
+.missing-card.is-linked {
+  cursor: pointer;
+}
+
+.missing-poster {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(150deg, var(--poster-start, var(--card-bg)), var(--poster-end, var(--card-bg)));
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.missing-card.is-linked:hover .missing-poster {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.missing-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.missing-poster-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.missing-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.missing-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.missing-year {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+@media (max-width: 1100px) {
+  .missing-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+}
+
 /* Card meta row: format badges + watch toggle */
 .card-meta-row {
   display: flex;

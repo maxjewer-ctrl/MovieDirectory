@@ -1074,6 +1074,11 @@ function renderCollection(groups) {
     block.append(list);
     dom.collectionContainer.append(block);
   }
+
+  // Under a director's titles, surface what they've directed that isn't owned.
+  if (appState.activeFilter.type === "director" && !appState.search.trim() && apiConfig.hasTmdbKey) {
+    dom.collectionContainer.append(renderMissingWorksSection(appState.activeFilter.value));
+  }
 }
 
 // Predefined mobile carousel categories (a movie can appear in several)
@@ -1264,6 +1269,14 @@ function renderShelfTab(movieList) {
     dom.collectionContainer.append(empty);
     return;
   }
+
+  // A selected director gets a straight grid of their titles (no carousels),
+  // followed by what they've directed that isn't on the shelf yet.
+  if (filter.type === "director") {
+    renderDirectorGridMobile(movieList, filter.value);
+    return;
+  }
+
   renderMobileCarousels(movieList);
 }
 
@@ -1737,6 +1750,148 @@ function renderCarouselCard(movie) {
   card.append(poster, title);
   card.addEventListener("click", () => selectMovie(movie.id));
   return card;
+}
+
+// --- Director view: full grid of a filmmaker's titles + what you're missing ---
+
+// Cache TMDb filmography lookups per director name for the session.
+const directorFilmographyCache = new Map();
+
+function directorFilmKey(title, year) {
+  const slug = String(title || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  return `${slug}|${year || ""}`;
+}
+
+// Sets used to tell whether a TMDb film is already on the shelf. We match on
+// TMDb id when we have it, and fall back to a title (+/- year) key.
+function buildOwnedFilmSets() {
+  const tmdbIds = new Set();
+  const titleYear = new Set();
+  const titleOnly = new Set();
+  for (const movie of movies) {
+    if (movie.tmdbId) tmdbIds.add(Number(movie.tmdbId));
+    titleYear.add(directorFilmKey(movie.title, movie.year));
+    titleOnly.add(directorFilmKey(movie.title, ""));
+  }
+  return { tmdbIds, titleYear, titleOnly };
+}
+
+function isOwnedFilm(film, owned) {
+  if (film.tmdbId && owned.tmdbIds.has(Number(film.tmdbId))) return true;
+  if (owned.titleYear.has(directorFilmKey(film.title, film.year))) return true;
+  if (owned.titleOnly.has(directorFilmKey(film.title, ""))) return true;
+  return false;
+}
+
+// Builds the "not yet in your collection" section for a director and kicks off
+// the async TMDb lookup that fills it in.
+function renderMissingWorksSection(directorName) {
+  const section = document.createElement("section");
+  section.className = "missing-works";
+
+  const head = document.createElement("div");
+  head.className = "missing-works-head";
+  head.innerHTML = `<h3>More from ${escapeHtml(directorName)}</h3><p class="missing-works-sub">Directed, but not in your collection</p>`;
+
+  const body = document.createElement("div");
+  body.className = "missing-works-body";
+  body.innerHTML = `<p class="missing-works-status">Looking up ${escapeHtml(directorName)}'s filmography…</p>`;
+
+  section.append(head, body);
+  loadMissingWorks(directorName, body);
+  return section;
+}
+
+async function loadMissingWorks(directorName, body) {
+  let films = directorFilmographyCache.get(directorName);
+  if (!films) {
+    try {
+      const response = await fetch(`./api/tmdb/director?name=${encodeURIComponent(directorName)}`);
+      if (!response.ok) throw new Error(`Lookup failed with ${response.status}`);
+      const data = await response.json();
+      films = Array.isArray(data.films) ? data.films : [];
+      directorFilmographyCache.set(directorName, films);
+    } catch (error) {
+      console.warn("Could not load director filmography.", error);
+      body.innerHTML = `<p class="missing-works-status">Couldn't load ${escapeHtml(directorName)}'s other films right now.</p>`;
+      return;
+    }
+  }
+
+  // The user may have navigated away while we were fetching.
+  if (appState.activeFilter.type !== "director" || appState.activeFilter.value !== directorName) return;
+
+  const owned = buildOwnedFilmSets();
+  const missing = films.filter((film) => !isOwnedFilm(film, owned));
+
+  if (!missing.length) {
+    body.innerHTML = films.length
+      ? `<p class="missing-works-status">You have every ${escapeHtml(directorName)} film we could find. 🎬</p>`
+      : `<p class="missing-works-status">No other directed titles found for ${escapeHtml(directorName)}.</p>`;
+    return;
+  }
+
+  body.innerHTML = "";
+  const grid = document.createElement("div");
+  grid.className = "missing-grid";
+  for (const film of missing) grid.append(renderMissingCard(film));
+  body.append(grid);
+}
+
+function renderMissingCard(film) {
+  const card = document.createElement("div");
+  card.className = "missing-card";
+  card.title = `${film.title}${film.year ? ` (${film.year})` : ""} — not in your collection`;
+
+  const poster = document.createElement("div");
+  poster.className = "missing-poster";
+  if (film.posterUrl) {
+    const img = document.createElement("img");
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.src = film.posterUrl;
+    img.alt = film.title;
+    poster.append(img);
+  } else {
+    applyPosterStyle(poster, buildPosterPalette(film.title));
+    const fallback = document.createElement("div");
+    fallback.className = "missing-poster-fallback";
+    fallback.textContent = film.title;
+    poster.append(fallback);
+  }
+
+  const meta = document.createElement("div");
+  meta.className = "missing-meta";
+  meta.innerHTML = `<p class="missing-title">${escapeHtml(film.title)}</p>${film.year ? `<p class="missing-year">${film.year}</p>` : ""}`;
+
+  card.append(poster, meta);
+
+  if (film.tmdbId) {
+    card.classList.add("is-linked");
+    card.addEventListener("click", () => {
+      window.open(`https://www.themoviedb.org/movie/${film.tmdbId}`, "_blank", "noopener");
+    });
+  }
+  return card;
+}
+
+// Mobile director view: a plain A-Z grid of the shelf titles (no carousels),
+// with the "not in your collection" section below.
+function renderDirectorGridMobile(list, directorName) {
+  const header = document.createElement("div");
+  header.className = "all-grid-header";
+  header.innerHTML = `<h3>${escapeHtml(directorName)}</h3><span class="carousel-count">${list.length}</span>`;
+  dom.collectionContainer.append(header);
+
+  const grid = document.createElement("div");
+  grid.className = "all-grid";
+  const sorted = [...list].sort((a, b) => a.sortTitle.localeCompare(b.sortTitle));
+  for (const movie of sorted) grid.append(renderCarouselCard(movie));
+  dom.collectionContainer.append(grid);
+
+  if (apiConfig.hasTmdbKey) {
+    dom.collectionContainer.append(renderMissingWorksSection(directorName));
+  }
 }
 
 function renderListOverview() {
