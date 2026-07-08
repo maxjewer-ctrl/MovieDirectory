@@ -301,6 +301,36 @@ function makeBackCoverTexture(movie, img) {
   } else {
     coverFit(ctx, img, 0, 0, cw, ch);
   }
+
+  // Gradient overlay at the bottom for text legibility
+  const overlayH = Math.round(ch * 0.34);
+  const overlayY = ch - overlayH;
+  const grad = ctx.createLinearGradient(0, overlayY, 0, ch);
+  grad.addColorStop(0, "rgba(0,0,0,0)");
+  grad.addColorStop(0.4, "rgba(0,0,0,0.68)");
+  grad.addColorStop(1, "rgba(0,0,0,0.92)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, overlayY, cw, overlayH);
+
+  const pad = 28;
+  const maxW = cw - pad * 2;
+  const titleY = overlayY + Math.round(overlayH * 0.26);
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#f0e8d8";
+  ctx.font = "bold 36px sans-serif";
+  ctx.fillText(truncate(ctx, movie.title, maxW), pad, titleY);
+
+  const metaParts = [movie.year, movie.director ? `Dir. ${movie.director}` : null].filter(Boolean);
+  if (metaParts.length) {
+    ctx.fillStyle = "rgba(240,232,216,0.62)";
+    ctx.font = "19px sans-serif";
+    ctx.fillText(truncate(ctx, metaParts.join("  ·  "), maxW), pad, titleY + 44);
+  }
+
+  drawEditionBadges(ctx, movie, cw, ch, pad);
+
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.flipY = true;
@@ -334,29 +364,57 @@ function makeFrontCoverTexture(movie, img) {
   return tex;
 }
 
+function drawEditionBadges(ctx, movie, cw, ch, pad) {
+  const badges = [];
+  if (movie.steelbook) badges.push({ text: "STEELBOOK", bg: "#1c2a42", fg: "#a8c0e8" });
+  if (movie.criterion) badges.push({ text: "CRITERION", bg: "#1a0a0a", fg: "#d4a060" });
+  if (movie.moviesAnywhere) badges.push({ text: "MOVIES ANYWHERE", bg: "#0a1a2e", fg: "#6090d8" });
+  if (!badges.length) return;
+  const bh = 26, br = 4;
+  let bx = pad;
+  const by = ch - pad - bh;
+  ctx.font = "bold 14px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  for (const b of badges) {
+    const bw = ctx.measureText(b.text).width + 16;
+    ctx.fillStyle = b.bg;
+    ctx.beginPath();
+    roundRectPath(ctx, bx, by, bw, bh, br);
+    ctx.fill();
+    ctx.fillStyle = b.fg;
+    ctx.fillText(b.text, bx + 8, by + bh / 2);
+    bx += bw + 8;
+  }
+}
+
 function makeBackTexture(movie) {
   const cw = 512, ch = 730;
   const canvas = document.createElement("canvas");
   canvas.width = cw;
   canvas.height = ch;
   const ctx = canvas.getContext("2d");
+  const type = getCaseType(movie);
+  const bandH = type === "4k" ? Math.round(ch * 0.09) : Math.round(ch * 0.13);
 
-  ctx.fillStyle = "#0e0e1c";
+  // Background colour matched to format so it reads as a continuation of the shell
+  const bgColor = type === "4k" ? "#050505" : type === "bluray" ? "#001f4e" : "#0a0c14";
+  ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, cw, ch);
 
-  // Subtle accent bar at top
-  ctx.fillStyle = "rgba(240,232,216,0.07)";
-  ctx.fillRect(0, 0, cw, 6);
+  // Format band at top — same colour as spine/shell so it wraps all the way around
+  if (type !== "criterion") drawFormatBand(ctx, cw, bandH, type, true);
 
   const pad = 36;
   const maxW = cw - pad * 2;
+  const textTop = type !== "criterion" ? bandH + 28 : 38;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
 
   // Title
   ctx.fillStyle = "#f0e8d8";
-  ctx.font = "bold 44px sans-serif";
-  ctx.fillText(truncate(ctx, movie.title, maxW), pad, 38);
+  ctx.font = "bold 42px sans-serif";
+  ctx.fillText(truncate(ctx, movie.title, maxW), pad, textTop);
 
   // Meta row
   const metaParts = [
@@ -365,31 +423,37 @@ function makeBackTexture(movie) {
     movie.runtime ? `${movie.runtime} min` : null,
   ].filter(Boolean);
 
+  const metaY = textTop + 54;
   if (metaParts.length) {
     ctx.fillStyle = "#8a8070";
-    ctx.font = "23px sans-serif";
+    ctx.font = "22px sans-serif";
     let meta = metaParts.join("  ·  ");
     if (ctx.measureText(meta).width > maxW) meta = metaParts.slice(0, 2).join("  ·  ");
-    ctx.fillText(truncate(ctx, meta, maxW), pad, 96);
+    ctx.fillText(truncate(ctx, meta, maxW), pad, metaY);
   }
 
   // Separator
+  const sepY = metaY + 36;
   ctx.strokeStyle = "rgba(240,232,216,0.15)";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(pad, 138);
-  ctx.lineTo(cw - pad, 138);
+  ctx.moveTo(pad, sepY);
+  ctx.lineTo(cw - pad, sepY);
   ctx.stroke();
 
   // Overview
   if (movie.overview) {
     ctx.fillStyle = "#c0b8a8";
-    ctx.font = "25px sans-serif";
-    wrapText(ctx, movie.overview, pad, 162, maxW, 36, ch - pad);
+    ctx.font = "24px sans-serif";
+    wrapText(ctx, movie.overview, pad, sepY + 18, maxW, 34, ch - 100);
   }
+
+  drawEditionBadges(ctx, movie, cw, ch, pad);
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
+  tex.flipY = true;
+  tex.anisotropy = renderer?.capabilities.getMaxAnisotropy?.() || 1;
   return tex;
 }
 

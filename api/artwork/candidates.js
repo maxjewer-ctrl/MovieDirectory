@@ -130,12 +130,31 @@ async function fetchBluRayReleaseArtwork(releaseUrl) {
   }
 }
 
-function buildTitleWordRegex(title) {
+// Words excluded from title-word matching (too common or format-specific to be discriminating)
+const TITLE_STOP = new Set([
+  "the","a","an","of","in","is","it","to","and","or","for","at","by","its","on","as","with","from",
+]);
+const FORMAT_TERMS = new Set([
+  "blu-ray","bluray","4k","ultra","uhd","dvd","disc","digital","remastered","remaster",
+]);
+
+function significantTitleWords(title) {
   return normalizeTitleForSearch(title)
+    .toLowerCase()
     .split(/\s+/)
-    .filter((word) => word.length >= 3)
+    .filter((w) => w.length >= 4 && !TITLE_STOP.has(w) && !FORMAT_TERMS.has(w) && !/^\d{4}$/.test(w));
+}
+
+function buildTitleWordRegex(title) {
+  return significantTitleWords(title)
     .slice(0, 6)
-    .map((word) => new RegExp(`\\b${escapeRegExp(word.toLowerCase())}\\b`, "i"));
+    .map((word) => new RegExp(`\\b${escapeRegExp(word)}\\b`, "i"));
+}
+
+function extraWordPenalty(movieTitle, releaseTitle) {
+  const movieWords = new Set(significantTitleWords(movieTitle));
+  const releaseWords = significantTitleWords(releaseTitle || "");
+  return releaseWords.filter((w) => !movieWords.has(w)).length * -10;
 }
 
 function scoreReleaseMatch(movie, release) {
@@ -144,7 +163,12 @@ function scoreReleaseMatch(movie, release) {
   const haystack = `${release.title} ${release.description}`.toLowerCase();
   let score = 0;
   const titleRegexes = buildTitleWordRegex(movie.title);
-  score += titleRegexes.filter((rx) => rx.test(haystack)).length * 14;
+  const matchCount = titleRegexes.filter((rx) => rx.test(haystack)).length;
+  score += matchCount * 14;
+  // Bonus when every significant title word is found — rewards exact/complete matches
+  if (titleRegexes.length > 0 && matchCount === titleRegexes.length) score += 18;
+  // Penalty for extra significant words in the release title not present in the movie title
+  score += extraWordPenalty(movie.title, release.title);
   if (movie.steelbook) score += haystack.includes("steelbook") ? 42 : -8;
   else if (haystack.includes("steelbook")) score -= 14;
   if (movie.criterion) score += haystack.includes("criterion") ? 46 : -10;

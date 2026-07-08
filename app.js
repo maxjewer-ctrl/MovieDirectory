@@ -1875,7 +1875,9 @@ function renderFormatBadges(container, movie) {
 function updateWatchToggle(btn, watchStatus) {
   const watched = watchStatus === "Watched";
   btn.classList.toggle("is-watched", watched);
-  btn.textContent = watched ? "✓" : "○";
+  btn.innerHTML = watched
+    ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`
+    : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
   btn.title = watched ? "Watched — click to mark unwatched" : "Mark as watched";
   btn.setAttribute("aria-label", watched ? "Mark unwatched" : "Mark watched");
 }
@@ -2204,7 +2206,7 @@ function renderDetailIconRail(movie) {
   watch.className = "rail-icon";
   const watched = movie.watchStatus === "Watched";
   watch.classList.toggle("is-watched", watched);
-  watch.textContent = watched ? "✓" : "○";
+  updateWatchToggle(watch, movie.watchStatus);
   watch.setAttribute("aria-label", watched ? "Watched" : "Mark watched");
   watch.addEventListener("click", () => {
     const next = watched ? "Unwatched" : "Watched";
@@ -2214,16 +2216,6 @@ function renderDetailIconRail(movie) {
   });
 
   rail.append(fav, watch);
-
-  // Trait icons under the favorite / watched boxes
-  for (const icon of movieTraitIcons(movie)) {
-    const chip = document.createElement("span");
-    chip.className = `rail-tag ${icon.cls}`;
-    chip.textContent = icon.text;
-    chip.title = icon.label;
-    chip.setAttribute("aria-label", icon.label);
-    rail.append(chip);
-  }
 }
 
 function renderDetailPoster(movie) {
