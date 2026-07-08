@@ -560,6 +560,45 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
+    if (request.method === "GET" && url.pathname === "/api/tmdb/director") {
+      const name = url.searchParams.get("name");
+      if (!name) { json(response, 400, { error: "Missing query param name" }); return; }
+      if (!TMDB_API_KEY) { json(response, 503, { error: "TMDb API key not configured." }); return; }
+
+      const searchUrl = `https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(name)}&include_adult=false`;
+      const searchResult = await fetchJson(searchUrl);
+      const people = searchResult.data?.results || [];
+      // Prefer people whose primary craft is directing, then by popularity.
+      const person = [...people].sort((a, b) => {
+        const aDir = a.known_for_department === "Directing" ? 1 : 0;
+        const bDir = b.known_for_department === "Directing" ? 1 : 0;
+        if (aDir !== bDir) return bDir - aDir;
+        return (b.popularity || 0) - (a.popularity || 0);
+      })[0];
+
+      if (!person) { json(response, 200, { directorName: name, films: [] }); return; }
+
+      const creditsUrl = `https://api.themoviedb.org/3/person/${person.id}/movie_credits?api_key=${TMDB_API_KEY}`;
+      const creditsResult = await fetchJson(creditsUrl);
+      const crew = creditsResult.data?.crew || [];
+      const seen = new Set();
+      const films = crew
+        .filter((c) => c.job === "Director" && !c.adult)
+        .filter((c) => { if (seen.has(c.id)) return false; seen.add(c.id); return true; })
+        .map((c) => ({
+          tmdbId: c.id,
+          title: c.title || c.original_title || "Untitled",
+          year: c.release_date ? Number(c.release_date.slice(0, 4)) : null,
+          posterUrl: c.poster_path ? `https://image.tmdb.org/t/p/w500${c.poster_path}` : null,
+          overview: c.overview || "",
+          voteCount: c.vote_count || 0,
+        }))
+        .sort((a, b) => (b.year || 0) - (a.year || 0));
+
+      json(response, 200, { directorId: person.id, directorName: person.name || name, films });
+      return;
+    }
+
     if (request.method === "GET" && url.pathname.startsWith("/api/tmdb/posters/")) {
       const tmdbId = url.pathname.replace("/api/tmdb/posters/", "");
       if (!TMDB_API_KEY) { json(response, 503, { error: "TMDb API key not configured." }); return; }
