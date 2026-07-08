@@ -104,9 +104,7 @@ const dom = {
   detailSteelbook: document.querySelector("#detail-steelbook"),
   detailCriterion: document.querySelector("#detail-criterion"),
   detailMoviesAnywhere: document.querySelector("#detail-movies-anywhere"),
-  detailWatchStatus: document.querySelector("#detail-watch-status"),
   detailRating: document.querySelector("#detail-rating"),
-  detailNotes: document.querySelector("#detail-notes"),
   detailPurchasePrice: document.querySelector("#detail-purchase-price"),
   detailEstimatedValue: document.querySelector("#detail-estimated-value"),
   detailCondition: document.querySelector("#detail-condition"),
@@ -2114,9 +2112,7 @@ function renderDetail() {
   dom.detailSteelbook.checked = Boolean(movie.steelbook);
   dom.detailCriterion.checked = Boolean(movie.criterion);
   dom.detailMoviesAnywhere.checked = Boolean(movie.moviesAnywhere);
-  dom.detailWatchStatus.value = movie.watchStatus || "";
   renderStarRating(dom.detailRating, movie.personalRating);
-  dom.detailNotes.value = movie.notes || "";
   dom.detailPurchasePrice.value = movie.purchasePrice != null ? movie.purchasePrice : "";
   dom.detailEstimatedValue.value = movie.estimatedValue != null ? movie.estimatedValue : "";
   dom.detailCondition.value = movie.condition || "";
@@ -2136,8 +2132,6 @@ function syncEditorAvailability() {
     dom.detailSteelbook,
     dom.detailCriterion,
     dom.detailMoviesAnywhere,
-    dom.detailWatchStatus,
-    dom.detailNotes,
     dom.detailPurchasePrice,
     dom.detailEstimatedValue,
     dom.detailCondition,
@@ -3530,12 +3524,6 @@ function bindEvents() {
   });
 
   // Detail panel editable fields
-  let detailSaveTimer = null;
-  function debouncedDetailSave(changes) {
-    clearTimeout(detailSaveTimer);
-    detailSaveTimer = setTimeout(() => saveMovieMetadata(appState.selectedMovieId, changes), 600);
-  }
-
   dom.detailPrimaryFormat.addEventListener("change", (e) => {
     saveMovieMetadata(appState.selectedMovieId, { primaryFormat: e.target.value });
   });
@@ -3547,12 +3535,6 @@ function bindEvents() {
   });
   dom.detailMoviesAnywhere.addEventListener("change", (e) => {
     saveMovieMetadata(appState.selectedMovieId, { moviesAnywhere: e.target.checked });
-  });
-  dom.detailWatchStatus.addEventListener("change", (e) => {
-    saveMovieMetadata(appState.selectedMovieId, { watchStatus: e.target.value });
-  });
-  dom.detailNotes.addEventListener("input", (e) => {
-    debouncedDetailSave({ notes: e.target.value });
   });
   dom.detailPurchasePrice.addEventListener("change", (e) => {
     saveMovieMetadata(appState.selectedMovieId, { purchasePrice: e.target.value ? Number(e.target.value) : null });

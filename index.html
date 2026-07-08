@@ -262,23 +262,15 @@
             </div>
             <div class="editor-grid">
               <label class="editor-field">
-                <span>Watch Status</span>
-                <select id="detail-watch-status">
-                  <option value="">Not Set</option>
-                  <option value="Unwatched">Unwatched</option>
-                  <option value="Watched">Watched</option>
-                  <option value="Rewatching">Rewatching</option>
-                </select>
-              </label>
-              <label class="editor-field">
                 <span>Personal Rating</span>
                 <div class="star-rating" id="detail-rating"></div>
               </label>
-              <label class="editor-field">
-                <span>Notes</span>
-                <textarea id="detail-notes" rows="2" placeholder="Personal notes..."></textarea>
-              </label>
             </div>
+          </div>
+
+          <div class="detail-block" id="detail-overview-block" hidden>
+            <h3>Overview</h3>
+            <p id="detail-overview" class="detail-overview-text"></p>
           </div>
 
           <div class="detail-block">
@@ -362,10 +354,6 @@
             </dl>
           </div>
 
-          <div class="detail-block" id="detail-overview-block" hidden>
-            <h3>Overview</h3>
-            <p id="detail-overview" class="detail-overview-text"></p>
-          </div>
           </div>
         </div>
       </div>
