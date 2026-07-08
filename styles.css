@@ -1946,7 +1946,9 @@ select:focus-visible,
     display: flex;
     flex-direction: column;
     width: min(100%, calc(100% - 20px));
-    margin: 10px auto;
+    /* Extra top offset keeps the header clear of the iOS status bar / notch
+       when launched full-screen from the Home Screen (viewport-fit=cover). */
+    margin: calc(10px + env(safe-area-inset-top, 0px)) auto 10px;
     gap: 14px;
   }
 

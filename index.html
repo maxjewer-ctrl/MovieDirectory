@@ -2,12 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Movie Directory</title>
+
+  <!-- Installed / Home Screen app: run standalone with no browser address bar -->
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#14100c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Movies">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=20260708-backview">
+  <link rel="stylesheet" href="./styles.css?v=20260708-pwa">
 </head>
 <body>
   <div class="app-shell">
@@ -690,7 +701,7 @@
     }
   </script>
   <script src="./movies-data.js?v=20260705-mobile11"></script>
-  <script src="./app.js?v=20260705-mobile11"></script>
+  <script src="./app.js?v=20260708-pwa"></script>
   <script type="module" src="./case-viewer.js?v=20260705-interactive9-invyaw"></script>
 </body>
 </html>
