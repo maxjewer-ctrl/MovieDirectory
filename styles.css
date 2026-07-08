@@ -1791,29 +1791,43 @@ select:focus-visible,
   display: none;
 }
 
-/* Action buttons under the case */
+/* Action buttons under the case — a single compact row of icon + label. */
 .hero-actions {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-/* Full description button (under the case) */
+/* Full description / playlist / cover buttons (under the case) */
 .full-desc-btn {
+  flex: 1 1 0;
+  min-width: 0;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 11px 14px;
+  gap: 3px;
+  padding: 8px 6px;
   border: 0;
   border-radius: 12px;
   background: var(--btn-ghost-bg);
   color: var(--text);
   font-weight: 700;
-  font-size: 0.86rem;
   cursor: pointer;
   transition: transform 160ms ease, background 160ms ease;
+}
+
+.full-desc-btn .btn-ico {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.full-desc-btn .btn-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .full-desc-btn:hover {
@@ -2213,20 +2227,23 @@ select:focus-visible,
     background: rgba(255, 255, 255, 0.72);
   }
 
-  /* Bottom close button — only visible inside the mobile sheet */
+  /* Bottom close button — only visible inside the mobile sheet. Kept slim so
+     it doesn't crowd the space under the stage (the grabber and backdrop also
+     dismiss the sheet). */
   .detail-close-bottom {
-    display: flex;
+    display: inline-flex;
+    align-self: center;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    width: 100%;
-    margin-top: 28px;
-    padding: 14px;
-    border: 1.5px solid rgba(255, 255, 255, 0.18);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.07);
-    color: rgba(255, 255, 255, 0.75);
-    font-size: 0.95rem;
+    width: auto;
+    margin: 10px auto 0;
+    padding: 7px 18px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.82rem;
     font-weight: 600;
     letter-spacing: 0.02em;
     cursor: pointer;
@@ -2239,19 +2256,15 @@ select:focus-visible,
   /* Action row under the trait icons */
   .detail-content .hero-actions {
     order: 3;
-    margin-top: 12px;
+    margin-top: 10px;
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-wrap: nowrap;
+    gap: 6px;
   }
 
   .detail-content .hero-actions .full-desc-btn {
-    flex: 1 1 45%;
+    flex: 1 1 0;
     width: auto;
-  }
-
-  .detail-content .hero-actions .full-desc-btn:first-child {
-    flex-basis: 100%;
   }
 
   .detail-content .full-desc-btn {
@@ -2267,7 +2280,7 @@ select:focus-visible,
     justify-content: center;
     gap: 10px;
     align-items: center;
-    padding-top: 10px;
+    padding-top: 8px;
   }
 
   .detail-icon-rail .rail-icon {
@@ -2296,7 +2309,7 @@ select:focus-visible,
   .detail-hero-title {
     order: 1;
     display: block;
-    margin: 16px 10px 0;
+    margin: 8px 10px 0;
     color: #f0eae2;
     text-align: center;
     font-family: "Cormorant Garamond", Georgia, serif;
