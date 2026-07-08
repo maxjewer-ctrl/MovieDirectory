@@ -1786,6 +1786,50 @@ select:focus-visible,
   display: none;
 }
 
+/* 3D case stage — positioned so the cover button can float over it */
+.detail-stage {
+  position: relative;
+}
+
+/* Small palette button floating over the top-right of the spinning case */
+.cover-fab {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 4;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(20, 16, 12, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.cover-fab:hover {
+  transform: translateY(-1px);
+  background: rgba(20, 16, 12, 0.78);
+}
+
+.cover-fab[hidden] {
+  display: none;
+}
+
+/* "+" playlist button that sits inline on the title line */
+.rail-plus {
+  font-size: 1.6rem;
+  font-weight: 300;
+}
+
 /* Collapse/expand control for the preview — hidden on desktop */
 .hero-collapse {
   display: none;
@@ -2253,42 +2297,68 @@ select:focus-visible,
     background: rgba(255, 255, 255, 0.14);
   }
 
-  /* Action row under the trait icons */
+  /* The spinning case sits at the top; the cover palette floats over it. */
+  .detail-stage {
+    order: 0;
+  }
+
+  /* Description button lives lower down, below the title/subtitle/chips. The
+     playlist action is the "+" on the title line, so hide the labelled one. */
   .detail-content .hero-actions {
-    order: 3;
-    margin-top: 10px;
+    margin-top: 12px;
     display: flex;
-    flex-wrap: nowrap;
     gap: 6px;
   }
 
   .detail-content .hero-actions .full-desc-btn {
     flex: 1 1 0;
     width: auto;
-  }
-
-  .detail-content .full-desc-btn {
     background: rgba(255, 255, 255, 0.08);
     color: #ece6da;
   }
 
-  /* Trait icons in a centered row under the title */
+  .detail-content #add-playlist-btn {
+    display: none;
+  }
+
+  /* Title line: name on the left, favorite / watched / add-to-playlist inline */
+  .detail-title-row {
+    order: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 2px 0;
+  }
+
+  .detail-hero-title {
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    color: #f0eae2;
+    text-align: left;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: clamp(1.35rem, 5.6vw, 1.9rem);
+    font-weight: 600;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+  }
+
   .detail-icon-rail {
-    order: 2;
     display: flex;
     flex-direction: row;
-    justify-content: center;
-    gap: 10px;
     align-items: center;
-    padding-top: 8px;
+    gap: 6px;
+    flex-shrink: 0;
+    padding: 0;
   }
 
   .detail-icon-rail .rail-icon {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     background: rgba(255, 255, 255, 0.08);
     color: #ece6da;
-    font-size: 1.05rem;
+    font-size: 1rem;
   }
 
   .detail-icon-rail .rail-icon.is-active {
@@ -2305,41 +2375,34 @@ select:focus-visible,
     display: flex;
   }
 
-  /* Title centered under the stage */
-  .detail-hero-title {
-    order: 1;
-    display: block;
-    margin: 8px 10px 0;
-    color: #f0eae2;
-    text-align: center;
-    font-family: "Cormorant Garamond", Georgia, serif;
-    font-size: clamp(1.5rem, 6.4vw, 2.1rem);
-    font-weight: 600;
-    line-height: 1.05;
-    letter-spacing: -0.02em;
-    text-wrap: balance;
-  }
-
-  /* The editor returns on mobile: it scrolls below the hero inside the
-     Spotlight sheet (rating, watch status, notes, value, special features). */
+  /* The editor scrolls below the hero inside the Spotlight sheet. */
   .detail-meta {
     display: block;
-    order: 4;
-    padding-top: 12px;
+    order: 2;
+    padding-top: 10px;
   }
 
-  /* The hero title already names the movie — drop the duplicate heading */
+  /* The title line already names the movie — drop the duplicate heading */
   .detail-meta .detail-heading-row {
     display: none;
   }
 
   .detail-meta .detail-subtitle {
-    text-align: center;
+    text-align: left;
     margin: 0 0 8px;
   }
 
   .detail-meta .detail-chip-row {
-    justify-content: center;
+    justify-content: flex-start;
+  }
+
+  /* Personal rating higher up, Library Settings pushed to the very bottom. */
+  .detail-editorial .detail-block.block-watch {
+    order: -1;
+  }
+
+  .detail-editorial .detail-block.block-library {
+    order: 6;
   }
 
   /* The sheet shares the desktop panel's dark ground, so its cream-on-dark

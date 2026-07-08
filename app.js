@@ -2393,7 +2393,16 @@ function renderDetailIconRail(movie) {
     renderDetailIconRail(getMovieById(movie.id) || movie);
   });
 
-  rail.append(fav, watch);
+  // Add to playlist (compact "+" that lives on the title line)
+  const playlist = document.createElement("button");
+  playlist.type = "button";
+  playlist.className = "rail-icon rail-plus";
+  playlist.textContent = "+";
+  playlist.title = "Add to playlist";
+  playlist.setAttribute("aria-label", "Add to playlist");
+  playlist.addEventListener("click", () => openPlaylistModal());
+
+  rail.append(fav, watch, playlist);
 }
 
 function renderDetailPoster(movie) {
