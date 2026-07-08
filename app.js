@@ -1076,7 +1076,7 @@ function renderCollection(groups) {
   }
 
   // Under a director's titles, surface what they've directed that isn't owned.
-  if (appState.activeFilter.type === "director" && !appState.search.trim() && apiConfig.hasTmdbKey) {
+  if (appState.activeFilter.type === "director" && !appState.search.trim()) {
     dom.collectionContainer.append(renderMissingWorksSection(appState.activeFilter.value));
   }
 }
@@ -1807,6 +1807,11 @@ async function loadMissingWorks(directorName, body) {
   if (!films) {
     try {
       const response = await fetch(`./api/tmdb/director?name=${encodeURIComponent(directorName)}`);
+      if (response.status === 503) {
+        // TMDb key not configured on the server — explain rather than fail silently.
+        body.innerHTML = `<p class="missing-works-status">Connect a TMDb API key to see more titles from ${escapeHtml(directorName)}.</p>`;
+        return;
+      }
       if (!response.ok) throw new Error(`Lookup failed with ${response.status}`);
       const data = await response.json();
       films = Array.isArray(data.films) ? data.films : [];
@@ -1889,9 +1894,7 @@ function renderDirectorGridMobile(list, directorName) {
   for (const movie of sorted) grid.append(renderCarouselCard(movie));
   dom.collectionContainer.append(grid);
 
-  if (apiConfig.hasTmdbKey) {
-    dom.collectionContainer.append(renderMissingWorksSection(directorName));
-  }
+  dom.collectionContainer.append(renderMissingWorksSection(directorName));
 }
 
 function renderListOverview() {
