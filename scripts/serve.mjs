@@ -210,6 +210,7 @@ async function searchBluRayDirectly(title) {
     "Accept-Language": "en-US,en;q=0.9",
     Referer: "https://www.blu-ray.com/",
   });
+  console.log(`[artwork] blu-ray.com HTTP ${result.status} for "${title}" (${result.text?.length ?? 0} bytes)`);
   if (result.status !== 200) return [];
   const seen = new Set();
   const results = [];
@@ -389,6 +390,7 @@ async function buildBluRayArtworkCandidates(movie, fallbackCaseArt) {
   const releaseUrls = [];
   for (const title of buildArtworkTitleSearchVariants(movie.title).slice(0, 2)) {
     const results = await searchBluRayDirectly(title);
+    console.log(`[artwork] blu-ray.com search "${title}" → ${results.length} raw results`);
     for (const result of results) {
       if (!result.url?.includes("blu-ray.com/movies/")) continue;
       if (!releaseUrls.includes(result.url)) releaseUrls.push(result.url);
@@ -396,6 +398,7 @@ async function buildBluRayArtworkCandidates(movie, fallbackCaseArt) {
     }
     if (releaseUrls.length >= 8) break;
   }
+  console.log(`[artwork] blu-ray.com release URLs: ${releaseUrls.length}`);
 
   const candidates = [];
   for (const releaseUrl of releaseUrls) {
@@ -620,12 +623,15 @@ const server = http.createServer(async (request, response) => {
     if (request.method === "POST" && url.pathname === "/api/artwork/candidates") {
       const body = await readRequestBody(request);
       const payload = body ? JSON.parse(body) : {};
+      console.log(`[artwork] "${payload.title}" tmdbId=${payload.tmdbId} tmdbKey=${TMDB_API_KEY ? "SET" : "NOT SET"}`);
+
       const fallbackCaseArt = await getTmdbCaseArt(payload.tmdbId);
 
       let tmdbPosters = [];
       if (TMDB_API_KEY && payload.tmdbId) {
         const tmdbUrl = `https://api.themoviedb.org/3/movie/${payload.tmdbId}/images?api_key=${TMDB_API_KEY}&include_image_language=en,null`;
         const result = await fetchJson(tmdbUrl);
+        console.log(`[artwork] TMDb images status=${result.status} posters=${result.data?.posters?.length ?? "null"}`);
         tmdbPosters = sortTmdbImages(result.data?.posters || [], ["en", null])
           .slice(0, 10)
           .map((poster) => ({
@@ -639,9 +645,11 @@ const server = http.createServer(async (request, response) => {
         buildBluRayArtworkCandidates(payload, fallbackCaseArt),
         fetchUpcItemImages(payload.upc),
       ]);
+      console.log(`[artwork] blu-ray=${bluRayCandidates.length} tmdb=${tmdbPosters.length} upc=${upcImages.length}`);
       const tmdbCandidates = buildTmdbPosterCandidates(payload, tmdbPosters, fallbackCaseArt);
       const upcCandidates = buildUpcArtworkCandidates(payload, upcImages, fallbackCaseArt);
       const candidates = dedupeArtworkCandidates([...bluRayCandidates, ...tmdbCandidates, ...upcCandidates]);
+      console.log(`[artwork] total candidates=${candidates.length}`);
       json(response, 200, { candidates });
       return;
     }
