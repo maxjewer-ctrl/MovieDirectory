@@ -3749,6 +3749,40 @@ select:focus-visible,
   border-color: var(--accent);
 }
 
+.carousel-diag {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  background: var(--chip-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.diag-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.diag-label {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.diag-value {
+  font-weight: 600;
+  text-align: right;
+}
+
+.diag-ok   { color: #4caf50; }
+.diag-fail { color: #e57373; }
+.diag-neutral { color: var(--muted); }
+
 /* Detail textarea */
 .detail-panel textarea {
   width: 100%;

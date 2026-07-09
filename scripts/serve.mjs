@@ -211,16 +211,16 @@ async function searchBluRayDirectly(title) {
     Referer: "https://www.blu-ray.com/",
   });
   console.log(`[artwork] blu-ray.com HTTP ${result.status} for "${title}" (${result.text?.length ?? 0} bytes)`);
-  if (result.status !== 200) return [];
+  if (result.status !== 200) return { urls: [], blocked: result.status === 403 || result.status === 503 };
   const seen = new Set();
-  const results = [];
+  const urls = [];
   for (const match of result.text.matchAll(/href="(\/movies\/[^"]+\/\d+\/)"/g)) {
     const path = match[1];
     if (seen.has(path)) continue;
     seen.add(path);
-    results.push({ url: `https://www.blu-ray.com${path}` });
+    urls.push(`https://www.blu-ray.com${path}`);
   }
-  return results;
+  return { urls, blocked: false };
 }
 
 function extractFirstMatch(text, regex) {
@@ -386,14 +386,16 @@ function buildUpcArtworkCandidates(movie, upcImages, fallbackCaseArt) {
   }));
 }
 
-async function buildBluRayArtworkCandidates(movie, fallbackCaseArt) {
+async function buildBluRayArtworkCandidates(movie, fallbackCaseArt, diagOut = {}) {
   const releaseUrls = [];
+  diagOut.blurayBlocked = false;
   for (const title of buildArtworkTitleSearchVariants(movie.title).slice(0, 2)) {
-    const results = await searchBluRayDirectly(title);
-    console.log(`[artwork] blu-ray.com search "${title}" → ${results.length} raw results`);
-    for (const result of results) {
-      if (!result.url?.includes("blu-ray.com/movies/")) continue;
-      if (!releaseUrls.includes(result.url)) releaseUrls.push(result.url);
+    const { urls, blocked } = await searchBluRayDirectly(title);
+    if (blocked) diagOut.blurayBlocked = true;
+    console.log(`[artwork] blu-ray.com search "${title}" → ${urls.length} raw results`);
+    for (const url of urls) {
+      if (!url.includes("blu-ray.com/movies/")) continue;
+      if (!releaseUrls.includes(url)) releaseUrls.push(url);
       if (releaseUrls.length >= 8) break;
     }
     if (releaseUrls.length >= 8) break;
@@ -623,6 +625,7 @@ const server = http.createServer(async (request, response) => {
     if (request.method === "POST" && url.pathname === "/api/artwork/candidates") {
       const body = await readRequestBody(request);
       const payload = body ? JSON.parse(body) : {};
+      const diag = { tmdbKeySet: !!TMDB_API_KEY, tmdbStatus: null, tmdbCount: 0, blurayCount: 0, blurayBlocked: false };
       console.log(`[artwork] "${payload.title}" tmdbId=${payload.tmdbId} tmdbKey=${TMDB_API_KEY ? "SET" : "NOT SET"}`);
 
       const fallbackCaseArt = await getTmdbCaseArt(payload.tmdbId);
@@ -631,7 +634,9 @@ const server = http.createServer(async (request, response) => {
       if (TMDB_API_KEY && payload.tmdbId) {
         const tmdbUrl = `https://api.themoviedb.org/3/movie/${payload.tmdbId}/images?api_key=${TMDB_API_KEY}&include_image_language=en,null`;
         const result = await fetchJson(tmdbUrl);
-        console.log(`[artwork] TMDb images status=${result.status} posters=${result.data?.posters?.length ?? "null"}`);
+        diag.tmdbStatus = result.status;
+        diag.tmdbCount = result.data?.posters?.length ?? 0;
+        console.log(`[artwork] TMDb images status=${result.status} posters=${diag.tmdbCount}`);
         tmdbPosters = sortTmdbImages(result.data?.posters || [], ["en", null])
           .slice(0, 10)
           .map((poster) => ({
@@ -642,15 +647,16 @@ const server = http.createServer(async (request, response) => {
       }
 
       const [bluRayCandidates, upcImages] = await Promise.all([
-        buildBluRayArtworkCandidates(payload, fallbackCaseArt),
+        buildBluRayArtworkCandidates(payload, fallbackCaseArt, diag),
         fetchUpcItemImages(payload.upc),
       ]);
+      diag.blurayCount = bluRayCandidates.length;
       console.log(`[artwork] blu-ray=${bluRayCandidates.length} tmdb=${tmdbPosters.length} upc=${upcImages.length}`);
       const tmdbCandidates = buildTmdbPosterCandidates(payload, tmdbPosters, fallbackCaseArt);
       const upcCandidates = buildUpcArtworkCandidates(payload, upcImages, fallbackCaseArt);
       const candidates = dedupeArtworkCandidates([...bluRayCandidates, ...tmdbCandidates, ...upcCandidates]);
       console.log(`[artwork] total candidates=${candidates.length}`);
-      json(response, 200, { candidates });
+      json(response, 200, { candidates, diag });
       return;
     }
 

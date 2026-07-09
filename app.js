@@ -2220,7 +2220,7 @@ async function ensureArtworkCandidates(movie) {
     .then((response) => response.json())
     .then(async (payload) => {
       const candidates = payload.candidates || [];
-      artworkCandidateCache.set(movie.id, { status: "ready", candidates });
+      artworkCandidateCache.set(movie.id, { status: "ready", candidates, diag: payload.diag || null });
       await Promise.all(candidates.slice(0, 6).map((candidate) => preloadArtworkCandidate(candidate)));
 
       if (appState.selectedMovieId === movie.id) {
@@ -2502,22 +2502,47 @@ async function openPosterCarousel(movie) {
 
 function renderEmptyCoverState(body, movie) {
   const cacheEntry = artworkCandidateCache.get(movie.id);
+  const diag = cacheEntry?.diag;
+
   let reason, hint;
   if (!movie.tmdbId) {
     reason = "No TMDb ID linked";
     hint = "Open the edit panel and add a TMDb ID to enable automatic artwork search.";
   } else if (cacheEntry?.status === "error") {
     reason = "Artwork server unreachable";
-    hint = "The local server couldn't contact external sources. Check that the server is running and your network connection is active.";
+    hint = "The local server couldn't be reached. Check that it's running.";
   } else {
     reason = "No covers found automatically";
-    hint = "Blu‑ray.com and TMDb returned no results for this title. You can paste an image URL below to use it directly.";
+    hint = "Paste an image URL below to use it directly.";
+  }
+
+  function diagRow(label, value, ok) {
+    const cls = ok === true ? "diag-ok" : ok === false ? "diag-fail" : "diag-neutral";
+    return `<div class="diag-row"><span class="diag-label">${escapeHtml(label)}</span><span class="diag-value ${cls}">${escapeHtml(value)}</span></div>`;
+  }
+
+  let diagHtml = "";
+  if (diag) {
+    const tmdbKeyRow = diagRow("TMDb API key", diag.tmdbKeySet ? "Configured" : "Not set — no posters available", diag.tmdbKeySet);
+    let tmdbPostersRow = "";
+    if (diag.tmdbKeySet && movie.tmdbId) {
+      if (diag.tmdbStatus === 401 || diag.tmdbStatus === 403) {
+        tmdbPostersRow = diagRow("TMDb posters", `API error ${diag.tmdbStatus} — check your key`, false);
+      } else if (diag.tmdbStatus === 200) {
+        tmdbPostersRow = diagRow("TMDb posters", diag.tmdbCount > 0 ? `${diag.tmdbCount} found` : "0 returned for this title", diag.tmdbCount > 0);
+      } else if (diag.tmdbStatus) {
+        tmdbPostersRow = diagRow("TMDb posters", `HTTP ${diag.tmdbStatus}`, false);
+      }
+    }
+    const blurayRow = diagRow("Blu‑ray.com", diag.blurayCount > 0 ? `${diag.blurayCount} found` : (diag.blurayBlocked ? "Blocked by site" : "0 results"), diag.blurayCount > 0 ? true : null);
+    diagHtml = `<div class="carousel-diag">${tmdbKeyRow}${tmdbPostersRow}${blurayRow}</div>`;
   }
 
   body.innerHTML = `
     <div class="carousel-empty-state">
       <p class="carousel-empty-reason">${escapeHtml(reason)}</p>
       <p class="carousel-empty-hint">${escapeHtml(hint)}</p>
+      ${diagHtml}
       <div class="carousel-import-section">
         <label class="carousel-import-label" for="carousel-import-url">Import cover from URL</label>
         <input id="carousel-import-url" type="url" class="carousel-import-input" placeholder="https://example.com/cover.jpg" />

@@ -65,19 +65,19 @@ async function searchBluRayDirectly(title) {
         Referer: "https://www.blu-ray.com/",
       },
     }, 8000);
-    if (!response.ok) return [];
+    if (!response.ok) return { urls: [], blocked: response.status === 403 || response.status === 503 };
     const html = await response.text();
     const seen = new Set();
-    const results = [];
+    const urls = [];
     for (const match of html.matchAll(/href="(\/movies\/[^"]+\/\d+\/)"/g)) {
       const path = match[1];
       if (seen.has(path)) continue;
       seen.add(path);
-      results.push({ url: `https://www.blu-ray.com${path}` });
+      urls.push(`https://www.blu-ray.com${path}`);
     }
-    return results;
+    return { urls, blocked: false };
   } catch {
-    return [];
+    return { urls: [], blocked: false };
   }
 }
 
@@ -254,16 +254,18 @@ function buildUpcArtworkCandidates(movie, upcImages, fallbackCaseArt) {
   }));
 }
 
-async function buildBluRayArtworkCandidates(movie, fallbackCaseArt) {
+async function buildBluRayArtworkCandidates(movie, fallbackCaseArt, diagOut = {}) {
   const titleVariants = buildArtworkTitleSearchVariants(movie.title).slice(0, 2);
 
+  diagOut.blurayBlocked = false;
   // Search blu-ray.com directly (parallel to stay within Vercel's function timeout)
   const searchResults = await Promise.all(titleVariants.map((t) => searchBluRayDirectly(t)));
   const releaseUrls = [];
-  for (const results of searchResults) {
-    for (const result of results) {
-      if (!result.url?.includes("blu-ray.com/movies/")) continue;
-      if (!releaseUrls.includes(result.url)) releaseUrls.push(result.url);
+  for (const { urls, blocked } of searchResults) {
+    if (blocked) diagOut.blurayBlocked = true;
+    for (const url of urls) {
+      if (!url.includes("blu-ray.com/movies/")) continue;
+      if (!releaseUrls.includes(url)) releaseUrls.push(url);
       if (releaseUrls.length >= 5) break;
     }
     if (releaseUrls.length >= 5) break;
@@ -308,17 +310,22 @@ export default async function handler(req, res) {
 
   try {
     const payload = req.body || {};
+    const diag = { tmdbKeySet: !!TMDB_API_KEY, tmdbStatus: null, tmdbCount: 0, blurayCount: 0, blurayBlocked: false };
 
-    const [fallbackCaseArt, tmdbImagesData] = await Promise.all([
-      getTmdbCaseArt(payload.tmdbId),
-      (TMDB_API_KEY && payload.tmdbId)
-        ? fetchWithTimeout(
-            `https://api.themoviedb.org/3/movie/${payload.tmdbId}/images?api_key=${TMDB_API_KEY}&include_image_language=en,null`,
-            { headers: { "User-Agent": "MovieDirectory/1.0" } },
-            5000
-          ).then((r) => r.json()).catch(() => null)
-        : Promise.resolve(null),
-    ]);
+    let tmdbImagesData = null;
+    const fallbackCaseArt = await getTmdbCaseArt(payload.tmdbId);
+    if (TMDB_API_KEY && payload.tmdbId) {
+      try {
+        const r = await fetchWithTimeout(
+          `https://api.themoviedb.org/3/movie/${payload.tmdbId}/images?api_key=${TMDB_API_KEY}&include_image_language=en,null`,
+          { headers: { "User-Agent": "MovieDirectory/1.0" } },
+          5000
+        );
+        diag.tmdbStatus = r.status;
+        tmdbImagesData = await r.json();
+        diag.tmdbCount = tmdbImagesData?.posters?.length ?? 0;
+      } catch { diag.tmdbStatus = 0; }
+    }
 
     const tmdbPosters = tmdbImagesData
       ? sortTmdbImages(tmdbImagesData.posters || [], ["en", null]).slice(0, 10).map((p) => ({
@@ -328,15 +335,16 @@ export default async function handler(req, res) {
         }))
       : [];
 
-    const [bluRayCandidates, tmdbCandidates, upcImages] = await Promise.all([
-      buildBluRayArtworkCandidates(payload, fallbackCaseArt),
-      Promise.resolve(buildTmdbPosterCandidates(payload, tmdbPosters, fallbackCaseArt)),
+    const [bluRayCandidates, upcImages] = await Promise.all([
+      buildBluRayArtworkCandidates(payload, fallbackCaseArt, diag),
       fetchUpcItemImages(payload.upc),
     ]);
+    diag.blurayCount = bluRayCandidates.length;
+    const tmdbCandidates = buildTmdbPosterCandidates(payload, tmdbPosters, fallbackCaseArt);
     const upcCandidates = buildUpcArtworkCandidates(payload, upcImages, fallbackCaseArt);
 
     const candidates = dedupeArtworkCandidates([...bluRayCandidates, ...tmdbCandidates, ...upcCandidates]);
-    res.status(200).json({ candidates });
+    res.status(200).json({ candidates, diag });
   } catch (error) {
     console.error("Artwork candidates error:", error);
     res.status(500).json({ candidates: [] });
