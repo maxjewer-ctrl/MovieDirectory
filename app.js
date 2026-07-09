@@ -2494,10 +2494,58 @@ async function openPosterCarousel(movie) {
   posterCarousel.posters = await ensureArtworkCandidates(movie);
 
   if (!posterCarousel.posters.length) {
-    body.innerHTML = '<p style="padding:28px;text-align:center;color:var(--muted);">No alternate covers found.</p>';
+    renderEmptyCoverState(body, movie);
     return;
   }
   renderPosterCarousel(movie);
+}
+
+function renderEmptyCoverState(body, movie) {
+  const cacheEntry = artworkCandidateCache.get(movie.id);
+  let reason, hint;
+  if (!movie.tmdbId) {
+    reason = "No TMDb ID linked";
+    hint = "Open the edit panel and add a TMDb ID to enable automatic artwork search.";
+  } else if (cacheEntry?.status === "error") {
+    reason = "Artwork server unreachable";
+    hint = "The local server couldn't contact external sources. Check that the server is running and your network connection is active.";
+  } else {
+    reason = "No covers found automatically";
+    hint = "Blu‑ray.com and TMDb returned no results for this title. You can paste an image URL below to use it directly.";
+  }
+
+  body.innerHTML = `
+    <div class="carousel-empty-state">
+      <p class="carousel-empty-reason">${escapeHtml(reason)}</p>
+      <p class="carousel-empty-hint">${escapeHtml(hint)}</p>
+      <div class="carousel-import-section">
+        <label class="carousel-import-label" for="carousel-import-url">Import cover from URL</label>
+        <input id="carousel-import-url" type="url" class="carousel-import-input" placeholder="https://example.com/cover.jpg" />
+        <button type="button" class="new-list-button carousel-import-btn" id="carousel-import-btn">Use This Artwork</button>
+      </div>
+    </div>
+  `;
+
+  const input = body.querySelector("#carousel-import-url");
+  body.querySelector("#carousel-import-btn").addEventListener("click", () => {
+    const url = input.value.trim();
+    if (!url) { input.focus(); return; }
+    const syntheticPoster = {
+      id: "manual-import",
+      sourceName: "Manual import",
+      sourceUrl: null,
+      releaseTitle: movie.title,
+      faceLabel: "Front",
+      frontUrl: url,
+      backUrl: null,
+      spineUrl: null,
+    };
+    setPosterFromCarousel(movie, syntheticPoster);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") body.querySelector("#carousel-import-btn").click();
+  });
 }
 
 function renderPosterCarousel(movie) {

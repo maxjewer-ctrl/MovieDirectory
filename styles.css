@@ -3684,6 +3684,71 @@ select:focus-visible,
   text-align: center;
 }
 
+.carousel-empty-state {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 4px 8px;
+  text-align: center;
+}
+
+.carousel-empty-reason {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.carousel-empty-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.5;
+  max-width: 320px;
+}
+
+.carousel-import-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.carousel-import-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: left;
+}
+
+.carousel-import-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius-sm);
+  background: var(--sidebar-bg);
+  color: var(--text);
+  font-size: 0.88rem;
+  box-sizing: border-box;
+}
+
+.carousel-import-input::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.carousel-import-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* Detail textarea */
 .detail-panel textarea {
   width: 100%;
