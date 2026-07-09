@@ -354,6 +354,37 @@ async function getTmdbCaseArt(tmdbId) {
   };
 }
 
+async function fetchUpcItemImages(upc) {
+  if (!upc) return [];
+  try {
+    const result = await fetchJson(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(upc)}`);
+    if (result.status !== 200 || !result.data) return [];
+    const images = [];
+    for (const item of result.data.items || []) {
+      for (const imgUrl of item.images || []) {
+        if (imgUrl && !images.includes(imgUrl)) images.push(imgUrl);
+      }
+    }
+    return images;
+  } catch {
+    return [];
+  }
+}
+
+function buildUpcArtworkCandidates(movie, upcImages, fallbackCaseArt) {
+  return upcImages.slice(0, 6).map((imgUrl, index) => ({
+    id: buildArtworkCandidateId([movie.id, "upc", index + 1]),
+    sourceName: "UPCitemDB",
+    sourceUrl: `https://www.upcitemdb.com/upc/${movie.upc}`,
+    releaseTitle: movie.title,
+    faceLabel: index === 0 ? "Product Photo" : `Product Photo ${index + 1}`,
+    frontUrl: imgUrl,
+    backUrl: fallbackCaseArt?.backdropUrl || null,
+    spineUrl: fallbackCaseArt?.logoUrl || null,
+    score: 4 - index,
+  }));
+}
+
 async function buildBluRayArtworkCandidates(movie, fallbackCaseArt) {
   const releaseUrls = [];
   for (const title of buildArtworkTitleSearchVariants(movie.title).slice(0, 2)) {
@@ -604,9 +635,13 @@ const server = http.createServer(async (request, response) => {
           }));
       }
 
-      const bluRayCandidates = await buildBluRayArtworkCandidates(payload, fallbackCaseArt);
+      const [bluRayCandidates, upcImages] = await Promise.all([
+        buildBluRayArtworkCandidates(payload, fallbackCaseArt),
+        fetchUpcItemImages(payload.upc),
+      ]);
       const tmdbCandidates = buildTmdbPosterCandidates(payload, tmdbPosters, fallbackCaseArt);
-      const candidates = dedupeArtworkCandidates([...bluRayCandidates, ...tmdbCandidates]);
+      const upcCandidates = buildUpcArtworkCandidates(payload, upcImages, fallbackCaseArt);
+      const candidates = dedupeArtworkCandidates([...bluRayCandidates, ...tmdbCandidates, ...upcCandidates]);
       json(response, 200, { candidates });
       return;
     }

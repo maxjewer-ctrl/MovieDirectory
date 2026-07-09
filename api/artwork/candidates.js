@@ -221,6 +221,39 @@ async function getTmdbCaseArt(tmdbId) {
   }
 }
 
+async function fetchUpcItemImages(upc) {
+  if (!upc) return [];
+  try {
+    const url = `https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(upc)}`;
+    const resp = await fetchWithTimeout(url, { headers: { "User-Agent": "MovieDirectory/1.0" } }, 5000);
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    const images = [];
+    for (const item of data.items || []) {
+      for (const imgUrl of item.images || []) {
+        if (imgUrl && !images.includes(imgUrl)) images.push(imgUrl);
+      }
+    }
+    return images;
+  } catch {
+    return [];
+  }
+}
+
+function buildUpcArtworkCandidates(movie, upcImages, fallbackCaseArt) {
+  return upcImages.slice(0, 6).map((imgUrl, index) => ({
+    id: buildArtworkCandidateId([movie.id, "upc", index + 1]),
+    sourceName: "UPCitemDB",
+    sourceUrl: `https://www.upcitemdb.com/upc/${movie.upc}`,
+    releaseTitle: movie.title,
+    faceLabel: index === 0 ? "Product Photo" : `Product Photo ${index + 1}`,
+    frontUrl: imgUrl,
+    backUrl: fallbackCaseArt?.backdropUrl || null,
+    spineUrl: fallbackCaseArt?.logoUrl || null,
+    score: 4 - index,
+  }));
+}
+
 async function buildBluRayArtworkCandidates(movie, fallbackCaseArt) {
   const titleVariants = buildArtworkTitleSearchVariants(movie.title).slice(0, 2);
 
@@ -295,12 +328,14 @@ export default async function handler(req, res) {
         }))
       : [];
 
-    const [bluRayCandidates, tmdbCandidates] = await Promise.all([
+    const [bluRayCandidates, tmdbCandidates, upcImages] = await Promise.all([
       buildBluRayArtworkCandidates(payload, fallbackCaseArt),
       Promise.resolve(buildTmdbPosterCandidates(payload, tmdbPosters, fallbackCaseArt)),
+      fetchUpcItemImages(payload.upc),
     ]);
+    const upcCandidates = buildUpcArtworkCandidates(payload, upcImages, fallbackCaseArt);
 
-    const candidates = dedupeArtworkCandidates([...bluRayCandidates, ...tmdbCandidates]);
+    const candidates = dedupeArtworkCandidates([...bluRayCandidates, ...tmdbCandidates, ...upcCandidates]);
     res.status(200).json({ candidates });
   } catch (error) {
     console.error("Artwork candidates error:", error);

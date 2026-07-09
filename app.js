@@ -2214,6 +2214,7 @@ async function ensureArtworkCandidates(movie) {
       primaryFormat: movie.primaryFormat,
       steelbook: movie.steelbook,
       criterion: movie.criterion,
+      upc: movie.upc || null,
     }),
   })
     .then((response) => response.json())
