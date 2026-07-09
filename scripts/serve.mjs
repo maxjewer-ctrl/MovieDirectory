@@ -35,8 +35,8 @@ const host = process.env.HOST || "0.0.0.0";
 const jsOutputPath = path.join(rootDir, "movies-data.js");
 const jsonOutputPath = path.join(rootDir, "movies-data.json");
 
-const TMDB_API_KEY = process.env.TMDB_API_KEY || "";
-const OMDB_API_KEY = process.env.OMDB_API_KEY || "";
+let TMDB_API_KEY = process.env.TMDB_API_KEY || "";
+let OMDB_API_KEY = process.env.OMDB_API_KEY || "";
 
 const contentTypes = {
   ".css": "text/css; charset=utf-8",
@@ -761,6 +761,37 @@ const server = http.createServer(async (request, response) => {
         hasTmdbKey: Boolean(TMDB_API_KEY),
         hasOmdbKey: Boolean(OMDB_API_KEY),
       });
+      return;
+    }
+
+    if (request.method === "PATCH" && url.pathname === "/api/config") {
+      const body = await readRequestBody(request);
+      const payload = body ? JSON.parse(body) : {};
+      if (payload.tmdbApiKey !== undefined) {
+        TMDB_API_KEY = payload.tmdbApiKey;
+        process.env.TMDB_API_KEY = payload.tmdbApiKey;
+      }
+      if (payload.omdbApiKey !== undefined) {
+        OMDB_API_KEY = payload.omdbApiKey;
+        process.env.OMDB_API_KEY = payload.omdbApiKey;
+      }
+      // Persist to .env so keys survive a server restart
+      try {
+        const envPath = path.join(rootDir, ".env");
+        let envContent = "";
+        try { envContent = await fs.readFile(envPath, "utf8"); } catch { /* new file */ }
+        const setKey = (content, key, value) => {
+          const re = new RegExp(`^${key}=.*$`, "m");
+          const line = `${key}=${value}`;
+          return re.test(content) ? content.replace(re, line) : content + (content.endsWith("\n") || !content ? "" : "\n") + line + "\n";
+        };
+        if (payload.tmdbApiKey !== undefined) envContent = setKey(envContent, "TMDB_API_KEY", TMDB_API_KEY);
+        if (payload.omdbApiKey !== undefined) envContent = setKey(envContent, "OMDB_API_KEY", OMDB_API_KEY);
+        await fs.writeFile(envPath, envContent, "utf8");
+      } catch (e) {
+        console.warn("Could not write .env:", e.message);
+      }
+      json(response, 200, { hasTmdbKey: Boolean(TMDB_API_KEY), hasOmdbKey: Boolean(OMDB_API_KEY) });
       return;
     }
 

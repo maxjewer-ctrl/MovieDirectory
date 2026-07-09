@@ -149,6 +149,14 @@ const dom = {
   fullDescBtn: document.querySelector("#full-desc-btn"),
   addPlaylistBtn: document.querySelector("#add-playlist-btn"),
   changeCoverBtn: document.querySelector("#change-cover-btn"),
+  settingsButton: document.querySelector("#settings-button"),
+  settingsButtonM: document.querySelector("#settings-button-m"),
+  settingsModal: document.querySelector("#settings-modal"),
+  settingsTmdbKey: document.querySelector("#settings-tmdb-key"),
+  settingsOmdbKey: document.querySelector("#settings-omdb-key"),
+  settingsTmdbStatus: document.querySelector("#settings-tmdb-status"),
+  settingsOmdbStatus: document.querySelector("#settings-omdb-status"),
+  settingsSaveBtn: document.querySelector("#settings-save-btn"),
   playlistModal: document.querySelector("#playlist-modal"),
   playlistPicker: document.querySelector("#playlist-picker"),
   playlistNewBtn: document.querySelector("#playlist-new-btn"),
@@ -3231,6 +3239,55 @@ async function selectTmdbResult(result) {
 
 // --- UPC Lookup ---
 
+// --- Settings ---
+
+function openSettingsModal() {
+  dom.settingsTmdbKey.value = "";
+  dom.settingsOmdbKey.value = "";
+  dom.settingsTmdbStatus.textContent = apiConfig.hasTmdbKey ? "✓ Key is configured" : "Not set";
+  dom.settingsTmdbStatus.className = "settings-key-status " + (apiConfig.hasTmdbKey ? "settings-key-ok" : "settings-key-missing");
+  dom.settingsOmdbStatus.textContent = apiConfig.hasOmdbKey ? "✓ Key is configured" : "Not set";
+  dom.settingsOmdbStatus.className = "settings-key-status " + (apiConfig.hasOmdbKey ? "settings-key-ok" : "settings-key-missing");
+  dom.settingsModal.hidden = false;
+}
+
+async function handleSettingsSave() {
+  const tmdbKey = dom.settingsTmdbKey.value.trim();
+  const omdbKey = dom.settingsOmdbKey.value.trim();
+  if (!tmdbKey && !omdbKey) return;
+
+  dom.settingsSaveBtn.disabled = true;
+  dom.settingsSaveBtn.textContent = "Saving…";
+
+  try {
+    const resp = await fetch("./api/config", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tmdbApiKey: tmdbKey || undefined, omdbApiKey: omdbKey || undefined }),
+    });
+    if (!resp.ok) throw new Error("Server error");
+    const refreshed = await fetch("./api/config").then((r) => r.json()).catch(() => null);
+    if (refreshed) apiConfig = refreshed;
+    if (tmdbKey) {
+      dom.settingsTmdbStatus.textContent = "✓ Saved";
+      dom.settingsTmdbStatus.className = "settings-key-status settings-key-ok";
+      dom.settingsTmdbKey.value = "";
+    }
+    if (omdbKey) {
+      dom.settingsOmdbStatus.textContent = "✓ Saved";
+      dom.settingsOmdbStatus.className = "settings-key-status settings-key-ok";
+      dom.settingsOmdbKey.value = "";
+    }
+    artworkCandidateCache.clear();
+  } catch {
+    dom.settingsTmdbStatus.textContent = "Save failed — is the server running?";
+    dom.settingsTmdbStatus.className = "settings-key-status settings-key-missing";
+  } finally {
+    dom.settingsSaveBtn.disabled = false;
+    dom.settingsSaveBtn.textContent = "Save Keys";
+  }
+}
+
 async function handleUpcLookup() {
   const upc = dom.upcInput.value.trim();
   if (!upc) return;
@@ -3579,6 +3636,20 @@ function bindEvents() {
 
   dom.upcLookupButton.addEventListener("click", handleUpcLookup);
   dom.upcInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); handleUpcLookup(); } });
+
+  if (dom.settingsButton) dom.settingsButton.addEventListener("click", openSettingsModal);
+  if (dom.settingsButtonM) dom.settingsButtonM.addEventListener("click", openSettingsModal);
+  if (dom.settingsSaveBtn) dom.settingsSaveBtn.addEventListener("click", handleSettingsSave);
+
+  document.querySelectorAll(".settings-reveal-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const input = document.getElementById(btn.dataset.target);
+      if (!input) return;
+      const showing = input.type === "text";
+      input.type = showing ? "password" : "text";
+      btn.textContent = showing ? "Show" : "Hide";
+    });
+  });
 
   dom.detailEditFeaturesButton.addEventListener("click", openFeaturesModal);
   dom.addCustomFeatureButton.addEventListener("click", addCustomFeature);

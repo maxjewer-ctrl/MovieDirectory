@@ -40,7 +40,10 @@
         <p class="sidebar-search-copy">Search the library, or jump straight into formats, editions, and collection traits.</p>
       </section>
 
-      <button id="add-movie-button-m" class="new-list-button sidebar-add-btn" type="button">+ Add Movie</button>
+      <div class="sidebar-actions">
+        <button id="add-movie-button-m" class="new-list-button sidebar-add-btn" type="button">+ Add Movie</button>
+        <button id="settings-button-m" class="icon-button settings-button" type="button" aria-label="Settings" title="Settings">⚙</button>
+      </div>
 
       <nav class="sidebar-nav" aria-label="Library sections">
         <section class="nav-group mobile-view-controls">
@@ -169,6 +172,7 @@
 
         </div>
         <button id="add-movie-button" class="new-list-button topbar-add-btn" type="button">+ Add Movie</button>
+        <button id="settings-button" class="icon-button settings-button" type="button" aria-label="Settings" title="Settings">⚙</button>
       </header>
 
       <section id="runtime-banner" class="runtime-banner" hidden aria-live="polite"></section>
@@ -692,6 +696,48 @@
       }
     }
   </script>
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal" hidden>
+    <div class="modal-backdrop" data-close-modal="settings-modal"></div>
+    <div class="modal-card settings-modal-card" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+      <div class="modal-header">
+        <div>
+          <p class="context-label">Configuration</p>
+          <h2 id="settings-modal-title">Settings</h2>
+        </div>
+        <button class="icon-button close-modal-button" type="button" aria-label="Close" data-close-modal="settings-modal">×</button>
+      </div>
+      <div class="settings-modal-body">
+        <section class="settings-section">
+          <h3 class="settings-section-title">API Keys</h3>
+          <p class="settings-section-desc">Keys are saved to the server's <code>.env</code> file and take effect immediately.</p>
+          <div class="settings-field">
+            <label for="settings-tmdb-key">TMDb API Key</label>
+            <p class="settings-field-hint">Powers movie search, poster lookup, and alternate cover art. <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">Get a free key →</a></p>
+            <div class="settings-key-row">
+              <input id="settings-tmdb-key" type="password" class="settings-key-input" placeholder="Paste your TMDb API key" autocomplete="off" />
+              <button type="button" class="ghost-button settings-reveal-btn" data-target="settings-tmdb-key">Show</button>
+            </div>
+            <p id="settings-tmdb-status" class="settings-key-status"></p>
+          </div>
+          <div class="settings-field">
+            <label for="settings-omdb-key">OMDb API Key</label>
+            <p class="settings-field-hint">Optional — used for IMDb ratings and plot data. <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noreferrer">Get a free key →</a></p>
+            <div class="settings-key-row">
+              <input id="settings-omdb-key" type="password" class="settings-key-input" placeholder="Paste your OMDb API key" autocomplete="off" />
+              <button type="button" class="ghost-button settings-reveal-btn" data-target="settings-omdb-key">Show</button>
+            </div>
+            <p id="settings-omdb-status" class="settings-key-status"></p>
+          </div>
+        </section>
+        <div class="modal-actions">
+          <button class="text-action" type="button" data-close-modal="settings-modal">Cancel</button>
+          <button id="settings-save-btn" class="new-list-button" type="button">Save Keys</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="./movies-data.js?v=20260705-mobile11"></script>
   <script src="./app.js?v=20260708-shuffle"></script>
   <script type="module" src="./case-viewer.js?v=20260705-interactive9-invyaw"></script>
