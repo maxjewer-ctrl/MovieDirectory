@@ -34,37 +34,6 @@ function buildArtworkTitleSearchVariants(title) {
   return [...new Set([original, normalized, collapsed].filter(Boolean))];
 }
 
-function buildArtworkSearchQueries(movie) {
-  const titleVariants = buildArtworkTitleSearchVariants(movie.title);
-  const format = String(movie.primaryFormat || "").toLowerCase();
-  const is4k = format.includes("4k");
-  const queries = [];
-
-  for (const title of titleVariants.slice(0, 2)) {
-    if (movie.steelbook) {
-      queries.push(`site:blu-ray.com/movies ${title} steelbook ${is4k ? "4K " : ""}blu-ray`);
-    }
-    if (movie.criterion) {
-      queries.push(`site:blu-ray.com/movies ${title} criterion collection`);
-    }
-    if (is4k) {
-      queries.push(`site:blu-ray.com/movies ${title} 4K blu-ray`);
-    }
-    queries.push(`site:blu-ray.com/movies ${title} blu-ray`);
-    if (movie.year) {
-      queries.push(`site:blu-ray.com/movies ${title} ${movie.year}`);
-    }
-  }
-
-  return [...new Set(queries)];
-}
-
-function decodeXmlEntities(value) {
-  return decodeHtmlEntities(String(value || ""))
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
-    .trim();
-}
-
 function extractFirstMatch(text, regex) {
   const match = text?.match(regex);
   return match?.[1] || null;
@@ -85,27 +54,28 @@ async function fetchWithTimeout(url, opts = {}, timeoutMs = 5000) {
   }
 }
 
-async function searchBingRssLinks(query) {
-  const url = `https://www.bing.com/search?format=rss&q=${encodeURIComponent(query)}`;
+async function searchBluRayDirectly(title) {
+  const url = `https://www.blu-ray.com/search/?keyword=${encodeURIComponent(title)}&type=movies`;
   try {
     const response = await fetchWithTimeout(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-        Accept: "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
+        Referer: "https://www.blu-ray.com/",
       },
-    }, 5000);
+    }, 8000);
     if (!response.ok) return [];
-    const text = await response.text();
-    if (!/<rss/i.test(text)) return [];
-    return [...text.matchAll(/<item>([\s\S]*?)<\/item>/g)].map((match) => {
-      const itemXml = match[1];
-      return {
-        url: decodeXmlEntities(extractFirstMatch(itemXml, /<link>([\s\S]*?)<\/link>/i)),
-        title: decodeXmlEntities(extractFirstMatch(itemXml, /<title>([\s\S]*?)<\/title>/i)),
-        description: decodeXmlEntities(extractFirstMatch(itemXml, /<description>([\s\S]*?)<\/description>/i)),
-      };
-    }).filter((item) => item.url);
+    const html = await response.text();
+    const seen = new Set();
+    const results = [];
+    for (const match of html.matchAll(/href="(\/movies\/[^"]+\/\d+\/)"/g)) {
+      const path = match[1];
+      if (seen.has(path)) continue;
+      seen.add(path);
+      results.push({ url: `https://www.blu-ray.com${path}` });
+    }
+    return results;
   } catch {
     return [];
   }
@@ -252,10 +222,10 @@ async function getTmdbCaseArt(tmdbId) {
 }
 
 async function buildBluRayArtworkCandidates(movie, fallbackCaseArt) {
-  const queries = buildArtworkSearchQueries(movie).slice(0, 4);
+  const titleVariants = buildArtworkTitleSearchVariants(movie.title).slice(0, 2);
 
-  // Run searches in parallel to stay within Vercel's function timeout
-  const searchResults = await Promise.all(queries.map((q) => searchBingRssLinks(q)));
+  // Search blu-ray.com directly (parallel to stay within Vercel's function timeout)
+  const searchResults = await Promise.all(titleVariants.map((t) => searchBluRayDirectly(t)));
   const releaseUrls = [];
   for (const results of searchResults) {
     for (const result of results) {
